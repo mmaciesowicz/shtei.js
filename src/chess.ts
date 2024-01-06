@@ -29,6 +29,7 @@ export const WHITE = 'w'
 export const BLACK = 'b'
 
 export const PAWN = 'p'
+export const MINISTER = 'm'
 export const KNIGHT = 'n'
 export const BISHOP = 'b'
 export const ROOK = 'r'
@@ -36,21 +37,23 @@ export const QUEEN = 'q'
 export const KING = 'k'
 
 export type Color = 'w' | 'b'
-export type PieceSymbol = 'p' | 'n' | 'b' | 'r' | 'q' | 'k'
+export type PieceSymbol = 'p' | 'm' | 'n' | 'b' | 'r' | 'q' | 'k'
 
 // prettier-ignore
 export type Square =
-    'a8' | 'b8' | 'c8' | 'd8' | 'e8' | 'f8' | 'g8' | 'h8' |
-    'a7' | 'b7' | 'c7' | 'd7' | 'e7' | 'f7' | 'g7' | 'h7' |
-    'a6' | 'b6' | 'c6' | 'd6' | 'e6' | 'f6' | 'g6' | 'h6' |
-    'a5' | 'b5' | 'c5' | 'd5' | 'e5' | 'f5' | 'g5' | 'h5' |
-    'a4' | 'b4' | 'c4' | 'd4' | 'e4' | 'f4' | 'g4' | 'h4' |
-    'a3' | 'b3' | 'c3' | 'd3' | 'e3' | 'f3' | 'g3' | 'h3' |
-    'a2' | 'b2' | 'c2' | 'd2' | 'e2' | 'f2' | 'g2' | 'h2' |
-    'a1' | 'b1' | 'c1' | 'd1' | 'e1' | 'f1' | 'g1' | 'h1'
+    'a10' | 'b10' | 'c10' | 'd10' | 'e10' | 'f10' | 'g10' | 'h10' | 'i10' | 'j10' |
+    'a9' | 'b9' | 'c9' | 'd9' | 'e9' | 'f9' | 'g9' | 'h9' | 'i9' | 'j9' |
+    'a8' | 'b8' | 'c8' | 'd8' | 'e8' | 'f8' | 'g8' | 'h8' | 'i8' | 'j8' |
+    'a7' | 'b7' | 'c7' | 'd7' | 'e7' | 'f7' | 'g7' | 'h7' | 'i7' | 'j7' |
+    'a6' | 'b6' | 'c6' | 'd6' | 'e6' | 'f6' | 'g6' | 'h6' | 'i6' | 'j6' |
+    'a5' | 'b5' | 'c5' | 'd5' | 'e5' | 'f5' | 'g5' | 'h5' | 'i5' | 'j5' |
+    'a4' | 'b4' | 'c4' | 'd4' | 'e4' | 'f4' | 'g4' | 'h4' | 'i4' | 'j4' |
+    'a3' | 'b3' | 'c3' | 'd3' | 'e3' | 'f3' | 'g3' | 'h3' | 'i3' | 'j3' |
+    'a2' | 'b2' | 'c2' | 'd2' | 'e2' | 'f2' | 'g2' | 'h2' | 'i2' | 'j2' |
+    'a1' | 'b1' | 'c1' | 'd1' | 'e1' | 'f1' | 'g1' | 'h1' | 'i1' | 'j1'
 
 export const DEFAULT_POSITION =
-  'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+  'r3Kq3r/2mbnnbm2/pppppppppp/10/10/10/10/PPPPPPPPPP/2MBNNBM2/R3kQ3R w KQkq - 0 1'
 
 export type Piece = {
   color: Color
