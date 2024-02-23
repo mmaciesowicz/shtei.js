@@ -24,7 +24,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
+/* eslint-disable */
 export const WHITE = 'w'
 export const BLACK = 'b'
 
@@ -258,6 +258,7 @@ function expandFenEmptySquares(fen: string): string {
 export function validateFen(fen: string) {
   // 1st criterion: 6 space-seperated fields? (\s is whitespace character)
   const tokens = fen.split(/\s+/)
+  console.log(tokens);
   if (tokens.length !== 5) {
     return {
       ok: false,
@@ -520,7 +521,7 @@ export class Chess {
   private _positionCounts: Record<string, number> = {}
 
   constructor(fen = DEFAULT_POSITION) {
-    this.load(fen)
+    this.load(fen=fen,{skipValidation: true});
   }
 
   clear({ preserveHeaders = false } = {}) {
@@ -596,11 +597,12 @@ export class Chess {
 
     for (let i = 0; i < position.length; i++) {
       const piece = position.charAt(i)
-
+      console.log(piece);
       if (piece === '/') {
         // square += 10 // add nothing as there is only a 100 square board
         continue
       } else if (isDigit(piece)) {
+        console.log(`${piece} is digit`);
         // check for '1' '0' for 10 digit
         if (piece === '1' && i+1 < position.length && position.charAt(i+1) == '0') {
           square += 10
@@ -610,6 +612,7 @@ export class Chess {
         square += parseInt(piece, 10)
       } else {
         const color = piece < 'a' ? WHITE : BLACK // check ascii for uppercase letters for white
+        console.log(`Putting ${piece}`);
         this._put(
           { type: piece.toLowerCase() as PieceSymbol, color },
           algebraic(square),
@@ -769,6 +772,7 @@ export class Chess {
     { type, color }: { type: PieceSymbol; color: Color },
     square: Square,
   ) {
+    console.log("Putting piece in _put");
     // check for piece
     if (SYMBOLS.indexOf(type.toLowerCase()) === -1) {
       return false
@@ -801,7 +805,7 @@ export class Chess {
     if (type === KING) {
       this._kings[color] = sq
     }
-
+    console.log(this._board);
     return true
   }
 
@@ -2434,3 +2438,4 @@ export class Chess {
     return this._moveNumber
   }
 }
+/* eslint-disable */
