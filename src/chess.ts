@@ -637,39 +637,68 @@ export class Chess {
     let fen = ''
     let count = 0
     for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
-      if (empty >= 10) {
-        fen += empty;
-        count+=empty;
-        if(count === 10)  {
-          fen += '/';
-          count = 0;
-        }
-        empty = 0;
-        
-      }
-      
+      // if there is a piece on this square
       if (this._board[i]) {
-        if (empty > 0) {
-          fen += empty
-          
-          count += empty;
-          if(count === 10)  {
-            fen += '/';
-            count = 0;
-          }
-          empty = 0
+        if (empty >0) {
+          fen += empty;
+          empty = 0;
         }
-        const { color, type: piece } = this._board[i]
-
-        fen += color === WHITE ? piece.toUpperCase() : piece.toLowerCase()
-        count++;
-      } else {
+        const { color, type: piece } = this._board[i];
+        fen += color === WHITE ? piece.toUpperCase() : piece.toLowerCase();
+      }
+      else {
         empty++;
       }
-      if(count === 10 && i !== SquareCode.j1)  {
-        fen += '/';
-        count = 0;
+      if (file(i) == 9 && i !== SquareCode.a10) {
+        if (empty > 0) {
+          fen += empty;
+        }
+        empty = 0;
+        if (i !== SquareCode.j1) {
+          fen += '/';
+        }
+        
       }
+      console.log(fen);
+
+      // if (empty >= 10) {
+      //   fen += empty;
+      //   count+=empty;
+      //   if(count === 10)  {
+      //     fen += '/';
+      //     count = 0;
+      //   }
+      //   empty = 0;
+        
+      // }
+      
+      // if (this._board[i]) {
+      //   if (empty > 0) {
+      //     fen += empty
+          
+      //     count += empty;
+      //     if(count === 10)  {
+      //       fen += '/';
+      //       count = 0;
+      //     }
+      //     empty = 0
+      //   }
+      //   const { color, type: piece } = this._board[i]
+
+      //   fen += color === WHITE ? piece.toUpperCase() : piece.toLowerCase()
+      //   count++;
+      // } else {
+      //   empty++;
+      // }
+      // if(i === SquareCode.j1 && empty > 0) {
+      //   fen += empty;
+      // }
+      // if(count === 10 && i !== SquareCode.j1)  {
+      //   fen += '/';
+      //   count = 0;
+      // }
+      
+      console.log(fen);
 
       // if ((i + 1) & SquareCode) {
       //   if (empty > 0) {
@@ -1309,8 +1338,8 @@ export class Chess {
         }
 
       } else {
-        if (forPiece && forPiece !== type) continue
-
+        if (forPiece && forPiece !== type) continue;
+        // console.log(`checking piece: ${forPiece}`);
         for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
           const offset = PIECE_OFFSETS[type][j];
 
@@ -1322,7 +1351,7 @@ export class Chess {
             to += offset
             // if (to & 0x88) break
 
-            if (!(to >=0 && to <= 99) && Math.abs(rank(from) - rank(to)) <= rankOffset) continue;
+            if (!((to >=0 && to <= 99) && Math.abs(rank(from) - rank(to)) <= rankOffset)) break;
             
             if (!this._board[to]) {
               addMove(moves, us, from, to, type)
@@ -1348,6 +1377,7 @@ export class Chess {
         }
       }
     }
+    // console.log(moves);
 
     /*
      * check for castling if we're:
@@ -1455,8 +1485,9 @@ export class Chess {
     //   moveObj = this._moveFromSan(move, strict)
     // } else 
     if (typeof move === 'object') {
-      const moves = this._moves()
-
+      // console.log("object move");
+      const moves = this._moves();
+      // console.log(moves);
       // convert the pretty move object to an ugly move object
       for (let i = 0, len = moves.length; i < len; i++) {
         if (
@@ -1472,12 +1503,14 @@ export class Chess {
 
     // failed to find move
     if (!moveObj) {
-      if (typeof move === 'string') {
-        throw new Error(`Invalid move: ${move}`)
-      } else {
-        throw new Error(`Invalid move: ${JSON.stringify(move)}`)
-      }
+      // if (typeof move === 'string') {
+      //   throw new Error(`Invalid move: ${move}`)
+      // } else {
+      //   throw new Error(`Invalid move: ${JSON.stringify(move)}`)
+      // }
+      return null;
     }
+    console.log("Found valid move.");
 
     /*
      * need to make a copy of move because we can't generate SAN after the move
