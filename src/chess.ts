@@ -181,7 +181,7 @@ const PIECE_OFFSETS = {
 }
 
 
-const SYMBOLS = 'pnbrqkPNBRQK'
+const SYMBOLS = 'pnmbrqkPNBRQKM'
 
 const PROMOTIONS: PieceSymbol[] = [KNIGHT, BISHOP, ROOK, QUEEN]
 
@@ -233,7 +233,7 @@ function isDigit(c: string): boolean {
 // Converts a SquareCode to algebraic notation.
 function algebraic(square: number): Square {
   const f = file(square)
-  const r = rank(square)
+  const r = rank(square)+1
   return ('abcdefghij'.substring(f, f + 1) +
     r) as Square
 }
@@ -258,7 +258,7 @@ function expandFenEmptySquares(fen: string): string {
 export function validateFen(fen: string) {
   // 1st criterion: 6 space-seperated fields? (\s is whitespace character)
   const tokens = fen.split(/\s+/)
-  console.log(tokens);
+  // console.log("tokens: ",tokens);
   if (tokens.length !== 5) {
     return {
       ok: false,
@@ -521,7 +521,8 @@ export class Chess {
   private _positionCounts: Record<string, number> = {}
 
   constructor(fen = DEFAULT_POSITION) {
-    this.load(fen=fen,{skipValidation: true});
+    // this.load(fen=fen,{skipValidation: true});
+    this.load(fen=fen);
   }
 
   clear({ preserveHeaders = false } = {}) {
@@ -597,12 +598,11 @@ export class Chess {
 
     for (let i = 0; i < position.length; i++) {
       const piece = position.charAt(i)
-      console.log(piece);
       if (piece === '/') {
         // square += 10 // add nothing as there is only a 100 square board
         continue
       } else if (isDigit(piece)) {
-        console.log(`${piece} is digit`);
+        // console.log(`${piece} is digit`);
         // check for '1' '0' for 10 digit
         if (piece === '1' && i+1 < position.length && position.charAt(i+1) == '0') {
           square += 10
@@ -612,7 +612,8 @@ export class Chess {
         square += parseInt(piece, 10)
       } else {
         const color = piece < 'a' ? WHITE : BLACK // check ascii for uppercase letters for white
-        console.log(`Putting ${piece}`);
+        // console.log(`Putting ${piece} on ${algebraic(square)} ${square}`);
+        
         this._put(
           { type: piece.toLowerCase() as PieceSymbol, color },
           algebraic(square),
@@ -634,18 +635,40 @@ export class Chess {
   fen() {
     let empty = 0
     let fen = ''
-
+    let count = 0
     for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
+      if (empty >= 10) {
+        fen += empty;
+        count+=empty;
+        if(count === 10)  {
+          fen += '/';
+          count = 0;
+        }
+        empty = 0;
+        
+      }
+      
       if (this._board[i]) {
         if (empty > 0) {
           fen += empty
+          
+          count += empty;
+          if(count === 10)  {
+            fen += '/';
+            count = 0;
+          }
           empty = 0
         }
         const { color, type: piece } = this._board[i]
 
         fen += color === WHITE ? piece.toUpperCase() : piece.toLowerCase()
+        count++;
       } else {
-        empty++
+        empty++;
+      }
+      if(count === 10 && i !== SquareCode.j1)  {
+        fen += '/';
+        count = 0;
       }
 
       // if ((i + 1) & SquareCode) {
@@ -660,15 +683,15 @@ export class Chess {
       //   empty = 0
       //   i += 8
       // }
-      if (empty > 0) {
-        fen += empty; 
-      }
+      // if (empty > 0) {
+      //   fen += empty; 
+      // }
 
-      if (i !== SquareCode.j1) {
-        fen += '/';
-      }
+      // if (i !== SquareCode.j1) {
+      //   fen += '/';
+      // }
 
-      empty = 0
+      // empty = 0
       
     }
 
@@ -714,7 +737,7 @@ export class Chess {
             epSquare = algebraic(this._epSquare)
             break
           }
-          // epSquare = algebraic(this._epSquare)
+          // epSquare = algebraicut(this._epSquare)
           // break
           
         }
@@ -772,7 +795,7 @@ export class Chess {
     { type, color }: { type: PieceSymbol; color: Color },
     square: Square,
   ) {
-    console.log("Putting piece in _put");
+    // console.log("Putting piece in _put");
     // check for piece
     if (SYMBOLS.indexOf(type.toLowerCase()) === -1) {
       return false
@@ -805,7 +828,7 @@ export class Chess {
     if (type === KING) {
       this._kings[color] = sq
     }
-    console.log(this._board);
+
     return true
   }
 
