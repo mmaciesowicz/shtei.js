@@ -1297,8 +1297,9 @@ export class Chess {
             if (!this._board[to]) {
               addMove(moves, us, from, to, type)
             } else {
-              // own color, stop loop
-              if (this._board[to].color === us) break
+              console.log(this._kingControllers);
+              // king or own color, stop loop
+              if (this._board[to].type === KING || this._board[to].color === us) break
 
               addMove(
                 moves,
@@ -1429,18 +1430,14 @@ export class Chess {
     //   moveObj = this._moveFromSan(move, strict)
     // } else 
     if (typeof move === 'object') {
-        // console.log("object move");
         const moves = this._moves();
-        // console.log(moves);
         // convert the pretty move object to an ugly move object
         for (let i = 0, len = moves.length; i < len; i++) {
-          console.log(moves[i]);
           if (isDigit(move.from) && isDigit(move.to)) {
             if ((Number(move.from) === Number(moves[i].from)) &&
               (Number(move.to) === Number(moves[i].to)) &&
               (!('promotion' in moves[i]) || move.promotion === moves[i].promotion)) {
                 moveObj = moves[i]
-              console.log("moveObj digit: ",moveObj);
               break
               }
           }
@@ -1450,13 +1447,11 @@ export class Chess {
             (!('promotion' in moves[i]) || move.promotion === moves[i].promotion)
           ) {
             moveObj = moves[i]
-            console.log("moveObj: ",moveObj);
             break
           }
         }
       // }
     }
-    console.log("moveObj: ",moveObj);
     // failed to find move
     if (!moveObj) {
       // if (typeof move === 'string') {
@@ -1466,7 +1461,6 @@ export class Chess {
       // }
       return null;
     }
-    console.log("Found valid move.");
 
     /*
      * need to make a copy of move because we can't generate SAN after the move
