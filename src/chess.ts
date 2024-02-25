@@ -845,21 +845,30 @@ export class Chess {
     const whiteKingPos = this._kings[WHITE];
     const blackKingPos = this._kings[BLACK];
 
+    const blackAttacksWhiteKing = this._numTimesAttacked({color: BLACK, square: whiteKingPos});
+    const whiteAttacksWhiteKing = this._numTimesAttacked({color: WHITE, square: whiteKingPos});
+
+    const whiteAttacksBlackKing = this._numTimesAttacked({color: WHITE, square: blackKingPos});
+    const blackAttacksBlackKing = this._numTimesAttacked({color: BLACK, square: blackKingPos});
+
     // Compare number of times black and white attack the white king
-    if (this._numTimesAttacked(BLACK,whiteKingPos) < this._numTimesAttacked(WHITE,whiteKingPos)) {
+    if (blackAttacksWhiteKing < whiteAttacksWhiteKing) {
       this._kingControllers[WHITE] = WHITE;
     }
     else {
       this._kingControllers[WHITE] = BLACK;
     }
 
-    if (this._numTimesAttacked(WHITE,blackKingPos) < this._numTimesAttacked(BLACK,blackKingPos)) {
+    if (whiteAttacksBlackKing < blackAttacksBlackKing) {
       this._kingControllers[BLACK] = BLACK;
     }
     else {
       this._kingControllers[BLACK] = WHITE;
     }
-
+    console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
+    console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
+    console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
+    console.log(`White attacks white king: ${whiteAttacksBlackKing}`);
   }
 
   // Does a piece on square1 attack a piece on square2?
@@ -884,107 +893,13 @@ export class Chess {
     return false;
   }
   // color = attackedBy color
-  private _numTimesAttacked(color: Color, square: number): number {
-    // loop through all squares
+  private _numTimesAttacked({color,square,xray=true}: {color: Color, square: number,xray?: boolean}): number {
     let numTimesAttacked = 0;
-    for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
-
-      // TODO: check for king control
-
-      // if empty square or wrong color
-      // if (this._board[i] === undefined || (this._board[i].color !== color) {
-      //   continue
-      // }
-
-      if (this._board[i] === undefined || (this._board[i].type !== KING && this._board[i].color !== color)) {
-        continue;
+    const moves = this._moves({xray: xray, moveColor: color});
+    for (let i=0; i<moves.length; i++){
+      if (moves[i].to === square) {
+        numTimesAttacked++;
       }
-      else if (this._board[i].type === KING ) {
-        // if destination square is king, skip
-        if (this._board[square].type === KING) continue;
-        // if the king on the current square is not controlled by the attacking color, continue
-        else if (this._kingControllers[this._board[i].color] !== color) continue;
-      }
-
-      const piece = this._board[i]
-      const difference = i - square
-
-      // skip - to/from square are the same
-      if (difference === 0) {
-        continue;
-      }
-      
-      if (this._squareAttacks(i, square)) {
-        if (piece.type === KING || piece.type === KNIGHT || piece.type === PAWN) {
-          numTimesAttacked ++;
-          continue;
-        }
-        let offset;
-        let skipIncrementFlag = 0;
-        switch (piece.type) {
-          case 'b':
-            offset = difference % 9 === 0 ? 9 : 11;
-            break;
-          case 'r':
-            offset = difference % 10 === 0 ? 10 : 1;
-            break;
-          default:
-            // minister and queen
-            if (difference % 9 === 0) offset = 9;
-            else if (difference % 11 === 0) offset = 11;
-            else if (difference % 10 === 0) offset = 10;
-            else {
-              offset = 1;
-            }
-            break;
-        }
-        // check for any blockages
-        offset = difference < 0 ? offset : -offset;
-        let nextSquare = i - offset;
-        while(nextSquare != square) {
-          // nextPiece is empty
-          const nextPiece = this._board[nextSquare];
-      
-          // if empty square, continue
-          if (nextPiece === undefined) {
-            nextSquare -= offset;
-            continue;
-          }
-          else if (nextPiece.color !== color || !this._squareAttacks(nextSquare, square)) {
-            skipIncrementFlag = 1;
-            break;
-          }
-          nextSquare -= offset;
-        }
-        if (!skipIncrementFlag) numTimesAttacked ++;
-      }
-      // if (ATTACKS[index] & PIECE_MASKS[piece.type]) {
-      //   if (piece.type === PAWN) {
-      //     if (difference > 0) {
-      //       if (piece.color === WHITE) return true
-      //     } else {
-      //       if (piece.color === BLACK) return true
-      //     }
-      //     continue
-      //   }
-
-      //   // if the piece is a knight or a king
-      //   if (piece.type === 'n' || piece.type === 'k') return true
-
-      //   const offset = RAYS[index]
-      //   let j = i + offset
-
-      //   let blocked = false
-      //   while (j !== square) {
-      //     if (this._board[j] != null) {
-      //       blocked = true
-      //       break
-      //     }
-      //     j += offset
-      //   }
-
-      //   if (!blocked) return true
-      // }
     }
 
     return numTimesAttacked;
@@ -1003,12 +918,12 @@ export class Chess {
 
   private _isQueenAttacked(queenColor: Color) {
     const square = this._queens[queenColor];
-    return square === -1 ? false : this._numTimesAttacked(swapColor(queenColor), square)
+    return square === -1 ? false : this._numTimesAttacked({color:swapColor(queenColor), square: square, xray: false});
   }
 
-  isAttacked(square: Square, attackedBy: Color): boolean {
-    return (this._numTimesAttacked(attackedBy, SquareCode[square]) > 0) ? true : false;
-  }
+  // isAttacked(square: Square, attackedBy: Color): boolean {
+  //   return (this._numTimesAttacked({color: attackedBy, square: SquareCode[square], xray: false}) > 0) ? true : false;
+  // }
 
   isCheck() {
     return (this._canKingReuniteQueen(this._turn) || this._isQueenAttacked(this._turn))
@@ -1172,11 +1087,11 @@ export class Chess {
       const { type, color } = this._board[from]
       // check king possession
       if (type === KING && this._kingControllers[color] !== us){
-        console.log(`${color} king is controlled by ${this._kingControllers[color]}, skip`);
+        //console.log(`${color} king is controlled by ${this._kingControllers[color]}, skip`);
         continue;
       }
       else if (type === KING && this._kingControllers[color] === us){
-        console.log(`${color} king is controlled by ${this._kingControllers[color]}, test for moves`);
+        //console.log(`${color} king is controlled by ${this._kingControllers[color]}, test for moves`);
       }
       else if (this._board[from].color === them) {
         continue;
@@ -1474,49 +1389,7 @@ export class Chess {
     // if we moved the king
     if (this._board[move.to].type === KING) {
       this._kings[us] = move.to
-
-      // if we castled, move the rook next to the king
-      // if (move.flags & BITS.KSIDE_CASTLE) {
-      //   const castlingTo = move.to - 1
-      //   const castlingFrom = move.to + 1
-      //   this._board[castlingTo] = this._board[castlingFrom]
-      //   delete this._board[castlingFrom]
-      // } else if (move.flags & BITS.QSIDE_CASTLE) {
-      //   const castlingTo = move.to + 1
-      //   const castlingFrom = move.to - 2
-      //   this._board[castlingTo] = this._board[castlingFrom]
-      //   delete this._board[castlingFrom]
-      // }
-
-      // // turn off castling
-      // this._castling[us] = 0
     }
-
-    // turn off castling if we move a rook
-    // if (this._castling[us]) {
-    //   for (let i = 0, len = ROOKS[us].length; i < len; i++) {
-    //     if (
-    //       move.from === ROOKS[us][i].square &&
-    //       this._castling[us] & ROOKS[us][i].flag
-    //     ) {
-    //       this._castling[us] ^= ROOKS[us][i].flag
-    //       break
-    //     }
-    //   }
-    // }
-
-    // turn off castling if we capture a rook
-    // if (this._castling[them]) {
-    //   for (let i = 0, len = ROOKS[them].length; i < len; i++) {
-    //     if (
-    //       move.to === ROOKS[them][i].square &&
-    //       this._castling[them] & ROOKS[them][i].flag
-    //     ) {
-    //       this._castling[them] ^= ROOKS[them][i].flag
-    //       break
-    //     }
-    //   }
-    // }
 
     // if big pawn move, update the en passant square
     if (move.flags & BITS.BIG_PAWN) {
@@ -1543,7 +1416,8 @@ export class Chess {
     if (us === BLACK) {
       this._moveNumber++
     }
-
+    this._updateKingControls();
+    console.log(this._kingControllers);
     this._turn = them
   }
 
