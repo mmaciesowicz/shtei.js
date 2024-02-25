@@ -1262,6 +1262,7 @@ export class Chess {
           if (!(to >=0 && to <= 99 && (Math.abs(rank(from) - rank(to)) <= 1))) continue;
 
           if (this._board[to]?.color === them) {
+            if (this._board[to]?.type === KING) continue
             addMove(
               moves,
               us,
@@ -1289,8 +1290,30 @@ export class Chess {
           let count = 0
           while (true) {
             to += offset
+            count +=1
             // if (to & 0x88) break
-            count += 1
+            const notSameRank = Math.abs(rank(from) - rank(to)) > 0;
+            const notSameFile = Math.abs(file(from) - file(to)) > 0;
+            // need to account for going off the edge of board
+            if (type === KING && (Math.abs(file(from) - file(to)) > 1 || Math.abs(rank(from) - rank(to)) > 1)) break;
+
+            // check that knight movement doesn't go out of bounds
+            if (type === KNIGHT ) {
+              const absDifference = Math.abs(from - to)
+              if ((absDifference === 19 || absDifference === 21 || absDifference === 8 || absDifference === 12) 
+                  && Math.abs(file(from) - file(to)) > 2) break;
+            }
+
+            // horizontal movement must stay on same rank
+            if (Math.abs(offset) === 1 && notSameRank) break;
+
+            // vertical movement must stay on same file
+            if (Math.abs(offset) === 10 && notSameFile) break;
+            
+            // diagonal movement must not be on same file or rank
+            const diagonal = Math.abs(offset) === 9 || Math.abs(offset) === 11;
+            if (diagonal && (Math.abs(rank(from) - rank(to)) !== count || Math.abs(file(from) - file(to)) !== count)) break;
+
             //if (!((to >=0 && to <= 99) && Math.abs(rank(from) - rank(to)) <= rankOffset)) break;
             if (!(to >=0 && to <= 99)) break;
             //if (type === KNIGHT && Math.abs(rank(from) - rank(to)) <= rankOffset) break;
@@ -1298,7 +1321,7 @@ export class Chess {
             if (!this._board[to]) {
               addMove(moves, us, from, to, type)
             } else {
-              console.log(this._kingControllers);
+              // console.log(this._kingControllers);
               // king or own color, stop loop
               if (this._board[to].type === KING || this._board[to].color === us) break
 
