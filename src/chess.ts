@@ -177,7 +177,7 @@ const PIECE_OFFSETS = {
   r: [-10, 1, -1, 10],
   q: [-9, -11, -10, -1, 1, 10, 11, 9],
   k: [-9, -11, -10, -1, 1, 10, 11, 9],
-  m: [-9, -11, -10, -1, 1, 10, 11, 9, -18, -22, -20, -2, 2, 20, 22, 18],
+  m: [-9, -11, -10, -1, 1, 10, 11, 9],
 }
 
 
@@ -1229,7 +1229,7 @@ export class Chess {
         singleSquare = true
       }
     }
-
+    
     for (let from = firstSquare; from <= lastSquare; from++) {
       // empty square or opponent, skip
       if (!this._board[from] || this._board[from].color === them) {
@@ -1279,17 +1279,18 @@ export class Chess {
       } else {
         if (forPiece && forPiece !== type) continue;
         // console.log(`checking piece: ${forPiece}`);
+        
         for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
           const offset = PIECE_OFFSETS[type][j];
 
           // knight and minister are able to move two ranks away
           const rankOffset = (type === KNIGHT || type === MINISTER) ? 2 : 1;
           to = from;
-
+          let count = 0
           while (true) {
             to += offset
             // if (to & 0x88) break
-
+            count += 1
             //if (!((to >=0 && to <= 99) && Math.abs(rank(from) - rank(to)) <= rankOffset)) break;
             if (!(to >=0 && to <= 99)) break;
             //if (type === KNIGHT && Math.abs(rank(from) - rank(to)) <= rankOffset) break;
@@ -1314,7 +1315,7 @@ export class Chess {
             }
 
             /* break, if knight, minister or king to avoid recounting offsets */
-            if (type === KNIGHT || type === KING || type === MINISTER) break
+            if (type === KNIGHT || type === KING || (type === MINISTER && count >=2)) break
           }
         }
       }
