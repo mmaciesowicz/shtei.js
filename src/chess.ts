@@ -1414,6 +1414,9 @@ export class Chess {
      * .move({ from: 'h7', <- argument is a move object
      *         to :'h8',
      *         promotion: 'q' })
+     * .move({ from: 17, <- argument is number relative to board array (in this case h9 to i9)
+     *          to: 18
+     *        })
      *
      *
      * An optional strict argument may be supplied to tell chess.js to
@@ -1426,22 +1429,34 @@ export class Chess {
     //   moveObj = this._moveFromSan(move, strict)
     // } else 
     if (typeof move === 'object') {
-      // console.log("object move");
-      const moves = this._moves();
-      // console.log(moves);
-      // convert the pretty move object to an ugly move object
-      for (let i = 0, len = moves.length; i < len; i++) {
-        if (
-          move.from === algebraic(moves[i].from) &&
-          move.to === algebraic(moves[i].to) &&
-          (!('promotion' in moves[i]) || move.promotion === moves[i].promotion)
-        ) {
-          moveObj = moves[i]
-          break
+        // console.log("object move");
+        const moves = this._moves();
+        // console.log(moves);
+        // convert the pretty move object to an ugly move object
+        for (let i = 0, len = moves.length; i < len; i++) {
+          console.log(moves[i]);
+          if (isDigit(move.from) && isDigit(move.to)) {
+            if ((Number(move.from) === Number(moves[i].from)) &&
+              (Number(move.to) === Number(moves[i].to)) &&
+              (!('promotion' in moves[i]) || move.promotion === moves[i].promotion)) {
+                moveObj = moves[i]
+              console.log("moveObj digit: ",moveObj);
+              break
+              }
+          }
+          else if (
+            move.from === algebraic(moves[i].from) &&
+            move.to === algebraic(moves[i].to) &&
+            (!('promotion' in moves[i]) || move.promotion === moves[i].promotion)
+          ) {
+            moveObj = moves[i]
+            console.log("moveObj: ",moveObj);
+            break
+          }
         }
-      }
+      // }
     }
-
+    console.log("moveObj: ",moveObj);
     // failed to find move
     if (!moveObj) {
       // if (typeof move === 'string') {
