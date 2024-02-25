@@ -450,7 +450,7 @@ function addMove(
   flags: number = BITS.NORMAL,
 ) {
   const r = rank(to)
-
+  
   if (piece === PAWN && (r === RANK_1 || r === RANK_10)) {
     for (let i = 0; i < PROMOTIONS.length; i++) {
       const promotion = PROMOTIONS[i]
@@ -851,14 +851,14 @@ export class Chess {
     const blackKingPos = this._kings[BLACK];
 
     // Compare number of times black and white attack the white king
-    if (this._attacked(BLACK,whiteKingPos) < this._attacked(WHITE,whiteKingPos)) {
+    if (this._numTimesAttacked(BLACK,whiteKingPos) < this._numTimesAttacked(WHITE,whiteKingPos)) {
       this._kingControllers[WHITE] = WHITE;
     }
     else {
       this._kingControllers[WHITE] = BLACK;
     }
 
-    if (this._attacked(WHITE,blackKingPos) < this._attacked(BLACK,blackKingPos)) {
+    if (this._numTimesAttacked(WHITE,blackKingPos) < this._numTimesAttacked(BLACK,blackKingPos)) {
       this._kingControllers[BLACK] = BLACK;
     }
     else {
@@ -867,104 +867,19 @@ export class Chess {
 
   }
 
-  // Does a piece on square1 attack a piece on square2 (including a piece that attacks through another friendly attacking piece)?
-  private _attacks(attackingColour: Color, square1index: number, s1Piece: Piece, square2index: number): boolean {
-    const absDifference = Math.abs(square1index - square2index);
-    const file1 = file(square1index);
-    const file2 = file(square2index);
-    const rank1 = rank(square1index);
-    const rank2 = rank(square2index);
-    switch (s1Piece.type) {
-      case 'p':
-        if (s1Piece.color === 'w') {
-          switch (file1) {
-            /* check edge of the board */
-            case 0: /* A file */
-              if (square1index - 9 === square2index) {
-                return true;
-              }
-              return false;
-            case 9: /* J File */
-              if (square1index - 11 === square2index) {
-                return true;
-              }
-              return false;
-            default:
-              if (square1index - 11 === square2index || square1index - 9 === square2index) {
-                return true;
-              }
-              return false;
-          }
-        }
-        else {
-          switch (file1) {
-            /* check edge of the board */
-            case 0: /* A file */
-              if (square1index + 11 === square2index) {
-                return true;
-              }
-              return false;
-            case 9: /* J File */
-              if (square1index + 9 === square2index) {
-                return true;
-              }
-              return false;
-            default:
-              if (square1index + 9 === square2index || square1index + 11 === square2index) {
-                return true;
-              }
-              return false;
-          }
-        }
-      case 'n':
-        /* absDifference must be either 19,21,8,12 for L shape move */
-        /* Also, the two files need to be within 2 apart, to avoid the edge of the board */
-        if ((absDifference === 19 || absDifference === 21 || absDifference === 8 || absDifference === 12) 
-            && Math.abs(file1 - file2) <= 2)  {
-          return true;
-        }
-        return false;
-      case 'b':
-        /* absDifference needs to be a multiple of 9 or 11 to be on a diagonal */
-        if (absDifference %9 === 0 || absDifference %11 === 0) {
-          // if (!countBlockedAttackers)
-            // loop through all pieces in between source and destination squares
-            
-
-
-            // }
-            return true;
-          }
-        return false;
-      case 'r':
-        /* two squares need to be on the same rank or file */
-        if (rank1 === rank2 || file1 === file2) {
-          return true;
-        }
-        return false;
-      case 'q':
-        if (rank1 === rank2 || file1 === file2 || absDifference %9 === 0 || absDifference %11 === 0) {
-          return true;
-        }
-        return false;
-      case 'k':
-        if (absDifference === 1 || absDifference === 10 || absDifference === 9 || absDifference === 11) {
-          return true;
-        }
-        return false;
-      case 'm':
-        // attacks like a king with range 2
-        if (absDifference === 1 || absDifference === 10 || absDifference === 9 || absDifference === 11 ||
-            absDifference === 2 || absDifference === 20 || absDifference === 18 || absDifference === 22) {
-          return true;
-        }
-        return false;
-      default:
-        throw new Error(`Piece ${s1Piece.type} not found.`);
+  // Does a piece on square1 attack a piece on square2?
+  private _squareAttacks(square1index: number, square2index: number): boolean {
+    const moves = this._moves({square: algebraic(square1index)});
+    
+    for (let i=0; i<moves.length; i++) {
+      if(moves[i].to === square2index) {
+        return true;
+      }
     }
+    return false;
   }
   // color = attackedBy color
-  private _attacked(color: Color, square: number): number {
+  private _numTimesAttacked(color: Color, square: number): number {
     // loop through all squares
     let numTimesAttacked = 0;
     for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
@@ -994,7 +909,7 @@ export class Chess {
         continue;
       }
       
-      if (this._attacks(color,i, piece, square)) {
+      if (this._squareAttacks(i, square)) {
         if (piece.type === KING || piece.type === KNIGHT || piece.type === PAWN) {
           numTimesAttacked ++;
           continue;
@@ -1030,7 +945,7 @@ export class Chess {
             nextSquare -= offset;
             continue;
           }
-          else if (nextPiece.color !== color || !this._attacks(color, nextSquare, nextPiece, square)) {
+          else if (nextPiece.color !== color || !this._squareAttacks(nextSquare, square)) {
             skipIncrementFlag = 1;
             break;
           }
@@ -1072,22 +987,22 @@ export class Chess {
 
   // private _isKingAttacked(kingColor: Color) {
   //   const square = this._kings[kingColor];
-  //   return square === -1 ? false : this._attacked(swapColor(kingColor), square)
+  //   return square === -1 ? false : this._numTimesAttacked(swapColor(kingColor), square)
   // }
   private _canKingReuniteQueen(kingColor: Color) {
     const kingSquare = this._kings[kingColor];
     const queenSquare = this._queens[kingColor];
     return (kingSquare === -1  || queenSquare === -1) ? false : 
-    (this._attacks(kingColor, queenSquare, this._board[queenSquare], kingSquare) && this._kingControllers[kingColor] === kingColor);
+    (this._squareAttacks(queenSquare, kingSquare) && this._kingControllers[kingColor] === kingColor);
   }
 
   private _isQueenAttacked(queenColor: Color) {
     const square = this._queens[queenColor];
-    return square === -1 ? false : this._attacked(swapColor(queenColor), square)
+    return square === -1 ? false : this._numTimesAttacked(swapColor(queenColor), square)
   }
 
   isAttacked(square: Square, attackedBy: Color): boolean {
-    return (this._attacked(attackedBy, SquareCode[square]) > 0) ? true : false;
+    return (this._numTimesAttacked(attackedBy, SquareCode[square]) > 0) ? true : false;
   }
 
   isCheck() {
@@ -1186,13 +1101,14 @@ export class Chess {
     verbose = false,
     square = undefined,
     piece = undefined,
-  }: { verbose?: boolean; square?: Square; piece?: PieceSymbol } = {}) {
-    const moves = this._moves({ square, piece })
-
+    color = this._turn,
+  }: { verbose?: boolean; square?: Square; piece?: PieceSymbol; color?: Color | undefined} = {}) {
+    
     if (verbose) {
+      const moves = this._moves({ square, piece, moveColor: color })
       return moves.map((move) => this._makePretty(move))
     }
-    return this._moves();
+    return this._moves({piece,square, moveColor: color});
     // else {
     //   // Outputs a string
     //   return moves.map((move) => this._moveToSan(move, moves))
@@ -1203,16 +1119,18 @@ export class Chess {
     legal = true, /* whether to return only legal moves */
     piece = undefined,
     square = undefined,
+    moveColor = this._turn
   }: {
     legal?: boolean
     piece?: PieceSymbol
     square?: Square
+    moveColor?: Color | undefined
   } = {}) {
     const forSquare = square ? (square.toLowerCase() as Square) : undefined
     const forPiece = piece?.toLowerCase()
 
     const moves: InternalMove[] = []
-    const us = this._turn
+    const us = moveColor
     const them = swapColor(us)
 
     let firstSquare = SquareCode.a10
@@ -1231,11 +1149,24 @@ export class Chess {
     }
     
     for (let from = firstSquare; from <= lastSquare; from++) {
-      // empty square or opponent, skip
-      if (!this._board[from] || this._board[from].color === them) {
-        continue
+      // empty square, skip
+      if (!this._board[from]) {
+        continue;
       }
-      const { type } = this._board[from]
+
+      const { type, color } = this._board[from]
+      // check king possession
+      if (type === KING && this._kingControllers[color] !== us){
+        console.log(`${color} king is controlled by ${this._kingControllers[color]}, skip`);
+        continue;
+      }
+      else if (type === KING && this._kingControllers[color] === us){
+        console.log(`${color} king is controlled by ${this._kingControllers[color]}, test for moves`);
+      }
+      else if (this._board[from].color === them) {
+        continue;
+      }
+      
 
       let to: number
       if (type === PAWN) {
@@ -1244,13 +1175,14 @@ export class Chess {
         // single square, non-capturing
         to = from + PAWN_OFFSETS[us][0]
         if (!this._board[to]) {
-          addMove(moves, us, from, to, PAWN)
-
+          addMove(moves, color, from, to, PAWN)
+          //this._updateKingControls();
           // double square
           to = from + PAWN_OFFSETS[us][1]
           // Make sure if double square, we're on the 2nd rank and next square is empty
           if (SECOND_RANK[us] === rank(from) && !this._board[to]) {
-            addMove(moves, us, from, to, PAWN, undefined, BITS.BIG_PAWN)
+            addMove(moves, color, from, to, PAWN, undefined, BITS.BIG_PAWN);
+            //this._updateKingControls();
           }
         }
 
@@ -1265,15 +1197,17 @@ export class Chess {
             if (this._board[to]?.type === KING) continue
             addMove(
               moves,
-              us,
+              color,
               from,
               to,
               PAWN,
               this._board[to].type,
               BITS.CAPTURE,
             )
+            //this._updateKingControls();
           } else if (to === this._epSquare) {
-            addMove(moves, us, from, to, PAWN, PAWN, BITS.EP_CAPTURE)
+            addMove(moves, color, from, to, PAWN, PAWN, BITS.EP_CAPTURE);
+            //this._updateKingControls();
           }
         }
 
@@ -1284,8 +1218,6 @@ export class Chess {
         for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
           const offset = PIECE_OFFSETS[type][j];
 
-          // knight and minister are able to move two ranks away
-          const rankOffset = (type === KNIGHT || type === MINISTER) ? 2 : 1;
           to = from;
           let count = 0
           while (true) {
@@ -1319,7 +1251,8 @@ export class Chess {
             //if (type === KNIGHT && Math.abs(rank(from) - rank(to)) <= rankOffset) break;
             
             if (!this._board[to]) {
-              addMove(moves, us, from, to, type)
+              addMove(moves, color, from, to, type)
+              //this._updateKingControls();
             } else {
               // console.log(this._kingControllers);
               // king or own color, stop loop
@@ -1327,13 +1260,14 @@ export class Chess {
 
               addMove(
                 moves,
-                us,
+                color,
                 from,
                 to,
                 type,
                 this._board[to].type,
                 BITS.CAPTURE,
               )
+              //this._updateKingControls();
               break
             }
 
@@ -1361,9 +1295,9 @@ export class Chess {
     //       if (
     //         !this._board[castlingFrom + 1] &&
     //         !this._board[castlingTo] &&
-    //         !this._attacked(them, this._kings[us]) &&
-    //         !this._attacked(them, castlingFrom + 1) &&
-    //         !this._attacked(them, castlingTo)
+    //         !this._numTimesAttacked(them, this._kings[us]) &&
+    //         !this._numTimesAttacked(them, castlingFrom + 1) &&
+    //         !this._numTimesAttacked(them, castlingTo)
     //       ) {
     //         addMove(
     //           moves,
@@ -1386,9 +1320,9 @@ export class Chess {
     //         !this._board[castlingFrom - 1] &&
     //         !this._board[castlingFrom - 2] &&
     //         !this._board[castlingFrom - 3] &&
-    //         !this._attacked(them, this._kings[us]) &&
-    //         !this._attacked(them, castlingFrom - 1) &&
-    //         !this._attacked(them, castlingTo)
+    //         !this._numTimesAttacked(them, this._kings[us]) &&
+    //         !this._numTimesAttacked(them, castlingFrom - 1) &&
+    //         !this._numTimesAttacked(them, castlingTo)
     //       ) {
     //         addMove(
     //           moves,
