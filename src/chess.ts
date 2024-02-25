@@ -90,11 +90,6 @@ export type Piece = {
   type: PieceSymbol
 }
 
-interface Control {
-  kingColor: Color
-  attackers: Record<Color, number>
-}
-
 type InternalMove = {
   color: Color
   from: number
@@ -869,11 +864,21 @@ export class Chess {
 
   // Does a piece on square1 attack a piece on square2?
   private _squareAttacks(square1index: number, square2index: number): boolean {
-    const moves = this._moves({square: algebraic(square1index)});
+    const {type, color} = this._board[square1index];
+    if (type === PAWN) {
+      if ((PAWN_OFFSETS[color][2]+square1index === square2index ||
+          PAWN_OFFSETS[color][3]+square1index === square2index) &&(
+          (Math.abs(rank(square1index) - rank(square2index)) <= 1))) {
+            return true;
+          }
+    }
+    else {
+      const moves = this._moves({square: algebraic(square1index)});
     
-    for (let i=0; i<moves.length; i++) {
-      if(moves[i].to === square2index) {
-        return true;
+      for (let i=0; i<moves.length; i++) {
+        if(moves[i].to === square2index) {
+          return true;
+        }
       }
     }
     return false;
@@ -1096,19 +1101,27 @@ export class Chess {
   // }): string[] | Move[]
 
   moves({ square, piece }: { square?: Square; piece?: PieceSymbol }): Move[]
+  moves({xray}: {xray?: boolean}): Move[]
+  moves({verbose, xray}: {verbose?: boolean, xray?: boolean} ): Move[]
 
   moves({
     verbose = false,
     square = undefined,
     piece = undefined,
     color = this._turn,
-  }: { verbose?: boolean; square?: Square; piece?: PieceSymbol; color?: Color | undefined} = {}) {
+    xray = false,
+  }: { verbose?: boolean; 
+       square?: Square; 
+       piece?: PieceSymbol; 
+       color?: Color | undefined;
+       xray?: boolean;
+    } = {}) {
     
     if (verbose) {
-      const moves = this._moves({ square, piece, moveColor: color })
+      const moves = this._moves({ piece: piece, square: square, moveColor: color })
       return moves.map((move) => this._makePretty(move))
     }
-    return this._moves({piece,square, moveColor: color});
+    return this._moves({piece,square, moveColor: color, xray});
     // else {
     //   // Outputs a string
     //   return moves.map((move) => this._moveToSan(move, moves))
@@ -1119,12 +1132,14 @@ export class Chess {
     legal = true, /* whether to return only legal moves */
     piece = undefined,
     square = undefined,
-    moveColor = this._turn
+    moveColor = this._turn,
+    xray = false, /* whether to include pieces that can see through another piece */
   }: {
     legal?: boolean
     piece?: PieceSymbol
     square?: Square
     moveColor?: Color | undefined
+    xray?: boolean
   } = {}) {
     const forSquare = square ? (square.toLowerCase() as Square) : undefined
     const forPiece = piece?.toLowerCase()
@@ -1220,6 +1235,7 @@ export class Chess {
 
           to = from;
           let count = 0
+          let blockingPieces: number[] = []
           while (true) {
             to += offset
             count +=1
@@ -1251,12 +1267,60 @@ export class Chess {
             //if (type === KNIGHT && Math.abs(rank(from) - rank(to)) <= rankOffset) break;
             
             if (!this._board[to]) {
+              if (xray) {
+                let noBlockingAttacks : boolean = false;
+                // make sure all blocking pieces in line are attacking the to square
+                for(let k=0; k<blockingPieces.length; k++) {
+                  noBlockingAttacks = noBlockingAttacks || !this._squareAttacks(blockingPieces[k], to);
+                }
+                if(noBlockingAttacks) {
+                  break;
+                }
+              }
               addMove(moves, color, from, to, type)
               //this._updateKingControls();
-            } else {
+            } 
+            else if (xray){
+              // xray vision through own colour pieces only
+              if (this._board[to].type !== KING && this._board[to].color === them && (blockingPieces === undefined || blockingPieces.length == 0)) {
+                // addMove(
+                //   moves,
+                //   color,
+                //   from,
+                //   to,
+                //   type,
+                //   this._board[to].type,
+                //   BITS.CAPTURE,
+                // )
+                break;
+              }
+              // we have reached an opponent's piece but we have a piece blocking; can't take it
+              else if (this._board[to].type !== KING && this._board[to].color === them && (blockingPieces.length !== 0)) {
+                break;
+              }
+              // we found a king through xray, add it to list
+              else if (this._board[to].type === KING) {
+                addMove(moves, color, from, to, type);
+                break;
+              }
+              else {
+                // does the blocking piece attack the next square in line?
+                if (this._squareAttacks(to, to+offset)) {
+                  blockingPieces.push(to);
+                  //addMove(moves, color, from, to, type);
+                  continue;
+                }
+                else{
+                  break;
+                }
+              }
+            }
+            else {
               // console.log(this._kingControllers);
               // king or own color, stop loop
-              if (this._board[to].type === KING || this._board[to].color === us) break
+              if (this._board[to].type === KING || this._board[to].color === us) {
+                break
+              }
 
               addMove(
                 moves,
@@ -1268,7 +1332,7 @@ export class Chess {
                 BITS.CAPTURE,
               )
               //this._updateKingControls();
-              break
+              break;
             }
 
             /* break, if knight, minister or king to avoid recounting offsets */
@@ -1277,88 +1341,28 @@ export class Chess {
         }
       }
     }
-    // console.log(moves);
-
-    /*
-     * check for castling if we're:
-     *   a) generating all moves, or
-     *   b) doing single square move generation on the king's square
-     */
-
-    // if (forPiece === undefined || forPiece === KING) {
-    //   if (!singleSquare || lastSquare === this._kings[us]) {
-    //     // king-side castling
-    //     if (this._castling[us] & BITS.KSIDE_CASTLE) {
-    //       const castlingFrom = this._kings[us]
-    //       const castlingTo = castlingFrom + 2
-
-    //       if (
-    //         !this._board[castlingFrom + 1] &&
-    //         !this._board[castlingTo] &&
-    //         !this._numTimesAttacked(them, this._kings[us]) &&
-    //         !this._numTimesAttacked(them, castlingFrom + 1) &&
-    //         !this._numTimesAttacked(them, castlingTo)
-    //       ) {
-    //         addMove(
-    //           moves,
-    //           us,
-    //           this._kings[us],
-    //           castlingTo,
-    //           KING,
-    //           undefined,
-    //           BITS.KSIDE_CASTLE,
-    //         )
-    //       }
-    //     }
-
-    //     // queen-side castling
-    //     if (this._castling[us] & BITS.QSIDE_CASTLE) {
-    //       const castlingFrom = this._kings[us]
-    //       const castlingTo = castlingFrom - 2
-
-    //       if (
-    //         !this._board[castlingFrom - 1] &&
-    //         !this._board[castlingFrom - 2] &&
-    //         !this._board[castlingFrom - 3] &&
-    //         !this._numTimesAttacked(them, this._kings[us]) &&
-    //         !this._numTimesAttacked(them, castlingFrom - 1) &&
-    //         !this._numTimesAttacked(them, castlingTo)
-    //       ) {
-    //         addMove(
-    //           moves,
-    //           us,
-    //           this._kings[us],
-    //           castlingTo,
-    //           KING,
-    //           undefined,
-    //           BITS.QSIDE_CASTLE,
-    //         )
-    //       }
-    //     }
-    //   }
-    // }
-
+    return moves;
     /*
      * return all pseudo-legal moves (this includes moves that allow the king
      * to be captured)
      */
-    if (!legal || this._kings[us] === -1) {
-      return moves
-    }
+    // if (!legal || this._kings[us] === -1) {
+    //   return moves
+    // }
 
-    // filter out illegal moves
-    const legalMoves = []
+    // // filter out illegal moves
+    // const legalMoves = []
 
-    // TODO: add other illegal move conditions
-    for (let i = 0, len = moves.length; i < len; i++) {
-      this._makeMove(moves[i])
-      if (!(this._isQueenAttacked(us) && this._canKingReuniteQueen(them))) {
-        legalMoves.push(moves[i])
-      }
-      this._undoMove()
-    }
+    // // TODO: add other illegal move conditions
+    // for (let i = 0, len = moves.length; i < len; i++) {
+    //   this._makeMove(moves[i])
+    //   if (!(this._isQueenAttacked(us) && this._canKingReuniteQueen(them))) {
+    //     legalMoves.push(moves[i])
+    //   }
+    //   this._undoMove()
+    // }
 
-    return legalMoves
+    // return legalMoves
   }
 
   move(
