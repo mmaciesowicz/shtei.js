@@ -659,69 +659,7 @@ export class Chess {
         }
         
       }
-      console.log(fen);
-
-      // if (empty >= 10) {
-      //   fen += empty;
-      //   count+=empty;
-      //   if(count === 10)  {
-      //     fen += '/';
-      //     count = 0;
-      //   }
-      //   empty = 0;
-        
-      // }
-      
-      // if (this._board[i]) {
-      //   if (empty > 0) {
-      //     fen += empty
-          
-      //     count += empty;
-      //     if(count === 10)  {
-      //       fen += '/';
-      //       count = 0;
-      //     }
-      //     empty = 0
-      //   }
-      //   const { color, type: piece } = this._board[i]
-
-      //   fen += color === WHITE ? piece.toUpperCase() : piece.toLowerCase()
-      //   count++;
-      // } else {
-      //   empty++;
-      // }
-      // if(i === SquareCode.j1 && empty > 0) {
-      //   fen += empty;
-      // }
-      // if(count === 10 && i !== SquareCode.j1)  {
-      //   fen += '/';
-      //   count = 0;
-      // }
-      
-      console.log(fen);
-
-      // if ((i + 1) & SquareCode) {
-      //   if (empty > 0) {
-      //     fen += empty
-      //   }
-
-      //   if (i !== SquareCode.h1) {
-      //     fen += '/'
-      //   }
-
-      //   empty = 0
-      //   i += 8
-      // }
-      // if (empty > 0) {
-      //   fen += empty; 
-      // }
-
-      // if (i !== SquareCode.j1) {
-      //   fen += '/';
-      // }
-
-      // empty = 0
-      
+      //console.log(fen);
     }
 
     let epSquare = '-'
@@ -1253,7 +1191,8 @@ export class Chess {
 
     if (verbose) {
       return moves.map((move) => this._makePretty(move))
-    } 
+    }
+    return this._moves();
     // else {
     //   // Outputs a string
     //   return moves.map((move) => this._moveToSan(move, moves))
@@ -1351,7 +1290,9 @@ export class Chess {
             to += offset
             // if (to & 0x88) break
 
-            if (!((to >=0 && to <= 99) && Math.abs(rank(from) - rank(to)) <= rankOffset)) break;
+            //if (!((to >=0 && to <= 99) && Math.abs(rank(from) - rank(to)) <= rankOffset)) break;
+            if (!(to >=0 && to <= 99)) break;
+            //if (type === KNIGHT && Math.abs(rank(from) - rank(to)) <= rankOffset) break;
             
             if (!this._board[to]) {
               addMove(moves, us, from, to, type)
