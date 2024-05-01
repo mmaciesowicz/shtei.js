@@ -103,6 +103,7 @@ type InternalMove = {
 interface History {
   move: InternalMove
   kings: Record<Color, number>
+  queens: Record<Color, number>
   turn: Color
   // castling: Record<Color, number>
   epSquare: number
@@ -518,11 +519,30 @@ export class Chess {
   constructor(fen = DEFAULT_POSITION) {
     // this.load(fen=fen,{skipValidation: true});
     this.load(fen=fen);
+    this._getInitialKingQueenPos();
+  }
+
+  _getInitialKingQueenPos() {
+    for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
+      if (this._board[i]) {
+        if(this._board[i].type === 'k') {
+          let pieceColor = this._board[i].color;
+          console.log(pieceColor + " king at " + i);
+          pieceColor === BLACK ? this._kings.b = i : this._kings.w = i;
+        }
+        if(this._board[i].type === 'q') {
+          let pieceColor = this._board[i].color;
+          console.log(pieceColor + " queen at " + i);
+          pieceColor === BLACK ? this._queens.b = i : this._queens.w = i;
+        }
+      }
+    }
   }
 
   clear({ preserveHeaders = false } = {}) {
     this._board = new Array<Piece>(100)
     this._kings = { w: EMPTY, b: EMPTY }
+    this._queens = { w: EMPTY, b: EMPTY }
     this._kingControllers = { w: BLACK, b: WHITE}
     this._updateKingControls();
     this._turn = WHITE
@@ -800,6 +820,9 @@ export class Chess {
     if (piece && piece.type === KING) {
       this._kings[piece.color] = EMPTY;
     }
+    if (piece && piece.type === QUEEN) {
+      this._queens[piece.color] = EMPTY;
+    }
 
     // this._updateCastlingRights()
     this._updateEnPassantSquare();
@@ -865,10 +888,10 @@ export class Chess {
     else {
       this._kingControllers[BLACK] = WHITE;
     }
-    console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
-    console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
-    console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
-    console.log(`White attacks white king: ${whiteAttacksBlackKing}`);
+    // console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
+    // console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
+    // console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
+    // console.log(`White attacks white king: ${whiteAttacksBlackKing}`);
   }
 
   // Does a piece on square1 attack a piece on square2?
@@ -892,11 +915,13 @@ export class Chess {
     }
     return false;
   }
-  // color = attackedBy color
+  // color = attacking color
   private _numTimesAttacked({color,square,xray=true}: {color: Color, square: number,xray?: boolean}): number {
     let numTimesAttacked = 0;
     const moves = this._moves({xray: xray, moveColor: color});
+    
     for (let i=0; i<moves.length; i++){
+      // console.log("NumtimesAttacked moves: " + moves[i].to);
       if (moves[i].to === square) {
         numTimesAttacked++;
       }
@@ -913,11 +938,13 @@ export class Chess {
     const kingSquare = this._kings[kingColor];
     const queenSquare = this._queens[kingColor];
     return (kingSquare === -1  || queenSquare === -1) ? false : 
-    (this._squareAttacks(queenSquare, kingSquare) && this._kingControllers[kingColor] === kingColor);
+    (this._squareAttacks(queenSquare, kingSquare));
   }
 
   private _isQueenAttacked(queenColor: Color) {
     const square = this._queens[queenColor];
+    console.log(this._turn + " queen is on square: " + square)
+    console.log(queenColor + " queen is attacked: " + this._numTimesAttacked({color:swapColor(queenColor), square: square, xray: false}) + " times");
     return square === -1 ? false : this._numTimesAttacked({color:swapColor(queenColor), square: square, xray: false});
   }
 
@@ -926,10 +953,15 @@ export class Chess {
   // }
 
   isCheck() {
-    return (this._canKingReuniteQueen(this._turn) || this._isQueenAttacked(this._turn))
+    return (this._canKingReuniteQueen(this._turn) || this._isQueenAttacked(this._turn));
   }
 
   inCheck() {
+    const otherColour = swapColor(this._turn);
+    console.log(this._turn + " can kingreuniteQueen: " + this._canKingReuniteQueen(this._turn));
+    console.log(this._turn + " can queenBeTaken: " + this._isQueenAttacked(this._turn));
+    console.log(otherColour + " can kingreuniteQueen: " + this._canKingReuniteQueen(otherColour));
+    console.log(otherColour + " can queenBeTaken: " + this._isQueenAttacked(otherColour));
     return this.isCheck()
   }
 
@@ -1354,6 +1386,7 @@ export class Chess {
     this._history.push({
       move,
       kings: { b: this._kings.b, w: this._kings.w },
+      queens: { b: this._queens.b, w: this._queens.w },
       turn: this._turn,
       // castling: { b: this._castling.b, w: this._castling.w },
       epSquare: this._epSquare,
@@ -1388,7 +1421,13 @@ export class Chess {
 
     // if we moved the king
     if (this._board[move.to].type === KING) {
-      this._kings[us] = move.to
+      this._kings[us] = move.to;
+      console.log(us + " king moved to: " +  this._kings[us]);
+    }
+    // if we moved the queen
+    if (this._board[move.to].type === QUEEN) {
+      this._queens[us] = move.to;
+      console.log(us + " queen moved to: " +  this._queens[us]);
     }
 
     // if big pawn move, update the en passant square
@@ -1417,7 +1456,7 @@ export class Chess {
       this._moveNumber++
     }
     this._updateKingControls();
-    console.log(this._kingControllers);
+    // console.log(this._kingControllers);
     this._turn = them
   }
 
@@ -1440,6 +1479,7 @@ export class Chess {
     const move = old.move
 
     this._kings = old.kings
+    this._queens = old.queens
     this._turn = old.turn
     // this._castling = old.castling
     this._epSquare = old.epSquare
