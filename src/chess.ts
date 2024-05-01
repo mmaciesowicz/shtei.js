@@ -522,7 +522,7 @@ export class Chess {
     this._getInitialKingQueenPos();
   }
 
-  _getInitialKingQueenPos() {
+  private _getInitialKingQueenPos() {
     for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
       if (this._board[i]) {
         if(this._board[i].type === 'k') {
@@ -953,16 +953,19 @@ export class Chess {
   // }
 
   isCheck() {
-    return (this._canKingReuniteQueen(this._turn) || this._isQueenAttacked(this._turn));
+    return (this._canKingReuniteQueen(BLACK) || 
+            this._isQueenAttacked(BLACK) || 
+            this._canKingReuniteQueen(WHITE) || 
+            this._isQueenAttacked(WHITE));
   }
 
-  inCheck() {
-    const otherColour = swapColor(this._turn);
-    console.log(this._turn + " can kingreuniteQueen: " + this._canKingReuniteQueen(this._turn));
-    console.log(this._turn + " can queenBeTaken: " + this._isQueenAttacked(this._turn));
+  inCheck(colour:Color=this._turn): boolean {
+    const otherColour = swapColor(colour);
+    console.log(colour + " can kingreuniteQueen: " + this._canKingReuniteQueen(colour));
+    console.log(colour + " can queenBeTaken: " + this._isQueenAttacked(colour));
     console.log(otherColour + " can kingreuniteQueen: " + this._canKingReuniteQueen(otherColour));
     console.log(otherColour + " can queenBeTaken: " + this._isQueenAttacked(otherColour));
-    return this.isCheck()
+    return (this._canKingReuniteQueen(colour) || <boolean>this._isQueenAttacked(colour));
   }
 
   isCheckmate() {
