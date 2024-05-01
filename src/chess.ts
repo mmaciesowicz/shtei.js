@@ -157,6 +157,8 @@ const BITS: Record<string, number> = {
   BIG_PAWN: 4,
   EP_CAPTURE: 8,
   PROMOTION: 16,
+  UNITE_WIN: 32,
+  QTAKE_WIN: 64,
   // KSIDE_CASTLE: 32,
   // QSIDE_CASTLE: 64,
 }
@@ -943,8 +945,8 @@ export class Chess {
 
   private _isQueenAttacked(queenColor: Color) {
     const square = this._queens[queenColor];
-    console.log(this._turn + " queen is on square: " + square)
-    console.log(queenColor + " queen is attacked: " + this._numTimesAttacked({color:swapColor(queenColor), square: square, xray: false}) + " times");
+    // console.log(this._turn + " queen is on square: " + square)
+    // console.log(queenColor + " queen is attacked: " + this._numTimesAttacked({color:swapColor(queenColor), square: square, xray: false}) + " times");
     return square === -1 ? false : this._numTimesAttacked({color:swapColor(queenColor), square: square, xray: false});
   }
 
@@ -969,7 +971,9 @@ export class Chess {
   }
 
   isCheckmate() {
-    return this.isCheck() && this._moves().length === 0
+    // return this.isCheck() && this._moves().length === 0
+    return this._queens.b === -1 || this._queens.w === -1 ||
+           this._kings.b === -1 || this._kings.w === -1;
   }
 
   isStalemate() {
@@ -1266,13 +1270,38 @@ export class Chess {
               }
             }
             else {
-              // console.log(this._kingControllers);
-              // king or own color, stop loop
-              if (this._board[to].type === KING || this._board[to].color === us) {
-                break
+              let theirQueenSpace = them === BLACK ? this._queens.b : this._queens.w;
+              // case where KING unites QUEEN (WIN!)
+              if (this._board[to].type === KING && this._board[to].color === us && 
+                this._board[from].type === QUEEN && this._board[from].color === us) {
+                addMove(
+                moves,
+                color,
+                from,
+                to,
+                type,
+                this._board[to].type,
+                BITS.UNITE_WIN,
+              )
               }
-
-              addMove(
+              // case where our piece takes their queen (WIN!)
+              else if (to === theirQueenSpace) {
+                addMove(
+                moves,
+                color,
+                from,
+                to,
+                type,
+                this._board[to].type,
+                BITS.QTAKE_WIN,
+              )
+              }
+              // king or own color, stop loop
+              else if (this._board[to].type === KING || this._board[to].color === us) {
+                break;
+              }
+              else {
+                addMove(
                 moves,
                 color,
                 from,
@@ -1281,6 +1310,8 @@ export class Chess {
                 this._board[to].type,
                 BITS.CAPTURE,
               )
+              }
+              
               //this._updateKingControls();
               break;
             }
@@ -1403,8 +1434,18 @@ export class Chess {
     const them = swapColor(us)
     this._push(move) // add move to history
 
+    
+
     this._board[move.to] = this._board[move.from]
     delete this._board[move.from]
+
+    // Check for unite win
+    if (move.flags & BITS.UNITE_WIN) {
+      alert(us + " king unites " + us + " queen. \n" + us + " wins!");
+    }
+    else if (move.flags & BITS.QTAKE_WIN) {
+      alert(us + " took " + them + " queen. \n" + us + " wins!");
+    }
 
     // if ep capture, remove the captured pawn
     if (move.flags & BITS.EP_CAPTURE) {
