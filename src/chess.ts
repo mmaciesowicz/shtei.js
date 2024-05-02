@@ -528,8 +528,18 @@ export class Chess {
     // for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
     //   console.log("Square " + i + ":");
     //   console.log(this._attacksOnEmptyBoard(i));
-    // }
-    
+    // }   
+    // let a,b;
+    // for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
+    //   for (let j = SquareCode.a10; j <= SquareCode.j1; j++) {
+    //     if (this._board[i] && this._board[j]) {
+    //       a = this._attacksOnEmptyBoard(i);
+    //       b = this._attacksOnEmptyBoard(j);
+
+    //       this._intersectionOfAttackingSquares(i,)
+    //     }
+    //   }
+    // }   
   }
 
   private _getInitialKingQueenPos() {
@@ -1009,6 +1019,13 @@ export class Chess {
 
   isGameOver() {
     return this.isCheckmate() || this.isStalemate() || this.isDraw()
+  }
+
+  // Used for detecting attacks through blocking pieces. Finds what common squares do two piece attack?
+  private _intersectionOfAttackingSquares(initialSquare: number, offset: number, a: Set<number>, b: Set<number>) {
+    const intersection = new Set([...a].filter(x => b.has(x)));
+    const sameDirection = new Set([...intersection].filter(x => (x-initialSquare) % offset === 0));
+    return sameDirection;
   }
 
   // Returns a set of legal attacking moves of the piece on the given (from) squareNumber on a board with no other pieces
