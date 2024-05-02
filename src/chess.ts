@@ -173,9 +173,9 @@ const PIECE_OFFSETS = {
   n: [-19, -21, -8, 12, 21, 19, 8, -12],
   b: [-9, -11, 11, 9],
   r: [-10, 1, -1, 10],
-  q: [-9, -11, -10, -1, 1, 10, 11, 9],
-  k: [-9, -11, -10, -1, 1, 10, 11, 9],
-  m: [-9, -11, -10, -1, 1, 10, 11, 9],
+  q: [-11, -10, -9, -1, 1, 9, 10, 11],
+  k: [-11, -10, -9, -1, 1, 9, 10, 11],
+  m: [-11, -10, -9, -1, 1, 9, 10, 11],
 }
 
 
@@ -522,6 +522,13 @@ export class Chess {
     // this.load(fen=fen,{skipValidation: true});
     this.load(fen=fen);
     this._getInitialKingQueenPos();
+    this._updateKingControls();
+
+    for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
+      console.log("Square " + i + ":");
+      console.log(this.attacksOnEmptyBoard(i));
+    }
+    
   }
 
   private _getInitialKingQueenPos() {
@@ -890,10 +897,10 @@ export class Chess {
     else {
       this._kingControllers[BLACK] = WHITE;
     }
-    // console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
-    // console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
-    // console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
-    // console.log(`White attacks white king: ${whiteAttacksBlackKing}`);
+    console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
+    console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
+    console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
+    console.log(`White attacks white king: ${whiteAttacksBlackKing}`);
   }
 
   // Does a piece on square1 attack a piece on square2?
@@ -923,7 +930,10 @@ export class Chess {
     const moves = this._moves({xray: xray, moveColor: color});
     
     for (let i=0; i<moves.length; i++){
-      // console.log("NumtimesAttacked moves: " + moves[i].to);
+      if (xray){
+        console.log("NumtimesAttacked xray moves: " + moves[i].from + " " + moves[i].to);
+      }
+      
       if (moves[i].to === square) {
         numTimesAttacked++;
       }
@@ -963,10 +973,10 @@ export class Chess {
 
   inCheck(colour:Color=this._turn): boolean {
     const otherColour = swapColor(colour);
-    console.log(colour + " can kingreuniteQueen: " + this._canKingReuniteQueen(colour));
-    console.log(colour + " can queenBeTaken: " + this._isQueenAttacked(colour));
-    console.log(otherColour + " can kingreuniteQueen: " + this._canKingReuniteQueen(otherColour));
-    console.log(otherColour + " can queenBeTaken: " + this._isQueenAttacked(otherColour));
+    // console.log(colour + " can kingreuniteQueen: " + this._canKingReuniteQueen(colour));
+    // console.log(colour + " can queenBeTaken: " + this._isQueenAttacked(colour));
+    // console.log(otherColour + " can kingreuniteQueen: " + this._canKingReuniteQueen(otherColour));
+    // console.log(otherColour + " can queenBeTaken: " + this._isQueenAttacked(otherColour));
     return (this._canKingReuniteQueen(colour) || <boolean>this._isQueenAttacked(colour));
   }
 
@@ -999,6 +1009,72 @@ export class Chess {
   isGameOver() {
     return this.isCheckmate() || this.isStalemate() || this.isDraw()
   }
+
+  // Returns a set of legal attacking moves of the piece on the given (from) squareNumber on a board with no other pieces
+  attacksOnEmptyBoard(from: number): Set<number>{
+    let moves = new Set<number>();
+    // empty square, return empty set
+    if (!this._board[from]) {
+      return moves;
+    }
+    const { type, color } = this._board[from];
+    
+    let to: number;
+    // pawn is special case because not all legal moves are attacking moves
+    if (type === PAWN) {
+      // pawn captures
+      for (let j = 2; j < 4; j++) {
+        to = from + PAWN_OFFSETS[color][j];
+
+        // ensure to is on the board and subtraction doesn't wrap over to next row
+        if (!(to >=0 && to <= 99 && (Math.abs(rank(from) - rank(to)) <= 1))) continue;
+
+        // legal move, add to set
+        moves.add(to);
+      }
+    }
+    else {
+      // piece  is not a pawn, check all directions for next move
+      for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
+        const offset = PIECE_OFFSETS[type][j];
+
+        to = from;
+        let count = 0
+        while (true) {
+          to += offset
+          count +=1
+          // if (to & 0x88) break
+          const notSameRank = Math.abs(rank(from) - rank(to)) > 0;
+          const notSameFile = Math.abs(file(from) - file(to)) > 0;
+          // need to account for going off the edge of board
+          if (type === KING && (Math.abs(file(from) - file(to)) > 1 || Math.abs(rank(from) - rank(to)) > 1)) break;
+
+          // check that knight movement doesn't go out of bounds
+          if (type === KNIGHT ) {
+            const absDifference = Math.abs(from - to)
+            if ((absDifference === 19 || absDifference === 21 || absDifference === 8 || absDifference === 12) 
+                && Math.abs(file(from) - file(to)) > 2) break;
+          }
+
+          // horizontal movement must stay on same rank
+          if (Math.abs(offset) === 1 && notSameRank) break;
+
+          // vertical movement must stay on same file
+          if (Math.abs(offset) === 10 && notSameFile) break;
+          
+          // diagonal movement must not be on same file or rank
+          const diagonal = Math.abs(offset) === 9 || Math.abs(offset) === 11;
+          if (diagonal && (Math.abs(rank(from) - rank(to)) !== count || Math.abs(file(from) - file(to)) !== count)) break;
+
+          if (!(to >=0 && to <= 99)) break;
+
+          moves.add(to);
+        }
+      }
+    } 
+    return moves;  
+  }
+
 
   //moves(): string[]
   //moves({ square }: { square: Square }): string[]
@@ -1095,6 +1171,7 @@ export class Chess {
     moveColor?: Color | undefined
     xray?: boolean
   } = {}) {
+
     const forSquare = square ? (square.toLowerCase() as Square) : undefined
     const forPiece = piece?.toLowerCase()
 
@@ -1125,6 +1202,8 @@ export class Chess {
 
       const { type, color } = this._board[from]
       // check king possession
+
+      // don't find moves if we don't control the king on this square
       if (type === KING && this._kingControllers[color] !== us){
         //console.log(`${color} king is controlled by ${this._kingControllers[color]}, skip`);
         continue;
@@ -1180,10 +1259,13 @@ export class Chess {
           }
         }
 
-      } else {
+      } 
+      // else not a pawn
+      else {
         if (forPiece && forPiece !== type) continue;
         // console.log(`checking piece: ${forPiece}`);
         
+        // we found a piece that is not a pawn, check all directions for next move
         for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
           const offset = PIECE_OFFSETS[type][j];
 
@@ -1220,6 +1302,7 @@ export class Chess {
             if (!(to >=0 && to <= 99)) break;
             //if (type === KNIGHT && Math.abs(rank(from) - rank(to)) <= rankOffset) break;
             
+            // if next space is empty while searching offsets
             if (!this._board[to]) {
               if (xray) {
                 let noBlockingAttacks : boolean = false;
@@ -1234,20 +1317,27 @@ export class Chess {
               addMove(moves, color, from, to, type)
               //this._updateKingControls();
             } 
+            // next space is not empty, but we want to search through due to xray
             else if (xray){
+              // don't search past opponent pieces
+              // if (this._board[to].type === KING) {
+
+              // }
+
+              // if (this._board[to].color === them) {
+              //   if (this.board[to].type === KING && this._kingControllers.b) {
+
+              //   }
+              // }
+
+
               // xray vision through own colour pieces only
               if (this._board[to].type !== KING && this._board[to].color === them && (blockingPieces === undefined || blockingPieces.length == 0)) {
-                // addMove(
-                //   moves,
-                //   color,
-                //   from,
-                //   to,
-                //   type,
-                //   this._board[to].type,
-                //   BITS.CAPTURE,
-                // )
+
                 break;
               }
+
+
               // we have reached an opponent's piece but we have a piece blocking; can't take it
               else if (this._board[to].type !== KING && this._board[to].color === them && (blockingPieces.length !== 0)) {
                 break;
@@ -1261,6 +1351,7 @@ export class Chess {
                 // does the blocking piece attack the next square in line?
                 if (this._squareAttacks(to, to+offset)) {
                   blockingPieces.push(to);
+                  console.log("blocking pieces: " + blockingPieces);
                   //addMove(moves, color, from, to, type);
                   continue;
                 }
