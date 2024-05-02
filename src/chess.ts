@@ -181,7 +181,7 @@ const PIECE_OFFSETS = {
 
 const SYMBOLS = 'pnmbrqkPNBRQKM'
 
-const PROMOTIONS: PieceSymbol[] = [KNIGHT, BISHOP, ROOK, QUEEN]
+const PROMOTIONS: PieceSymbol[] = [KNIGHT, BISHOP, ROOK, QUEEN, MINISTER]
 
 // const RANK_1 = 7
 // const RANK_2 = 6
@@ -524,10 +524,11 @@ export class Chess {
     this._getInitialKingQueenPos();
     this._updateKingControls();
 
-    for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
-      console.log("Square " + i + ":");
-      console.log(this.attacksOnEmptyBoard(i));
-    }
+    // DEBUGGING
+    // for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
+    //   console.log("Square " + i + ":");
+    //   console.log(this._attacksOnEmptyBoard(i));
+    // }
     
   }
 
@@ -1011,7 +1012,7 @@ export class Chess {
   }
 
   // Returns a set of legal attacking moves of the piece on the given (from) squareNumber on a board with no other pieces
-  attacksOnEmptyBoard(from: number): Set<number>{
+  private _attacksOnEmptyBoard(from: number): Set<number>{
     let moves = new Set<number>();
     // empty square, return empty set
     if (!this._board[from]) {
@@ -1027,7 +1028,7 @@ export class Chess {
         to = from + PAWN_OFFSETS[color][j];
 
         // ensure to is on the board and subtraction doesn't wrap over to next row
-        if (!(to >=0 && to <= 99 && (Math.abs(rank(from) - rank(to)) <= 1))) continue;
+        if (!(to >=0 && to <= 99 && (Math.abs(rank(from) - rank(to)) <= 1) && Math.abs(file(from) - file(to)) <= 1)) continue;
 
         // legal move, add to set
         moves.add(to);
@@ -1069,6 +1070,9 @@ export class Chess {
           if (!(to >=0 && to <= 99)) break;
 
           moves.add(to);
+
+          /* break, if knight, minister or king to avoid recounting offsets */
+          if (type === KNIGHT || type === KING || (type === MINISTER && count >=2)) break
         }
       }
     } 
