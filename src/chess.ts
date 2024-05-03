@@ -448,6 +448,10 @@ function addMove(
   flags: number = BITS.NORMAL,
 ) {
   const r = rank(to)
+  // don't push duplicate moves
+  if (moves.includes({color,from,to,piece,captured,flags})) {
+    return;
+  }
   
   if (piece === PAWN && (r === RANK_1 || r === RANK_10)) {
     for (let i = 0; i < PROMOTIONS.length; i++) {
@@ -897,6 +901,10 @@ export class Chess {
     let whiteKingPos = this._kings[WHITE];
     let blackKingPos = this._kings[BLACK];
 
+    console.log("white king pos updatekingcontrols: ", whiteKingPos);
+    console.log("black king pos updatekingcontrols: ", blackKingPos);
+
+
     let blackAttacksWhiteKing = this._numTimesAttacked({color: BLACK, square: whiteKingPos});
     let whiteAttacksWhiteKing = this._numTimesAttacked({color: WHITE, square: whiteKingPos});
 
@@ -1050,10 +1058,15 @@ export class Chess {
   }
 
   // Used for detecting attacks through blocking pieces. Finds what common squares do two piece attack?
-  private _intersectionOfAttackingSquares(initialSquare: number, offset: number, a: Set<number>, b: Set<number>) {
+  private _intersectionOfAttackingSquares(aSquare: number, bSquare: number, offset: number, a: Set<number>, b: Set<number>) {
+    console.log("a: ",a);
+    console.log("b:", b);
     const intersection = new Set([...a].filter(x => b.has(x)));
-    const sameDirection = new Set([...intersection].filter(x => (x-initialSquare) % offset === 0));
-    return sameDirection;
+    // const sameDirection = new Set([...intersection].filter(x => (x-initialSquare) % offset === 0));
+    console.log("intersection of attacks for square: ", aSquare);
+    console.log(intersection);
+    // return sameDirection;
+    return intersection;
   }
 
   // Returns a set of legal attacking moves of the piece on the given (from) squareNumber on a board with no other pieces
@@ -1319,10 +1332,12 @@ export class Chess {
                 else if (this._board[to].type === KING && this._board[to].color === us && 
                   this._board[from].type === QUEEN && this._board[from].color === us) {
                   addMove(moves,color,from,to,type,this._board[to].type,BITS.UNITE_WIN);
+                  break;
                 }
                 // case where our piece takes their queen (WIN!)
                 else if (to === this._queens[them]) {
                   addMove(moves,color,from,to,type,this._board[to].type,BITS.QTAKE_WIN);
+                  break;
                 }
                 else if (!xray || !this.pieceInControlByColour(us,to)) break; // if we don't want to search through pieces, or piece not in our control
                 else {
@@ -1336,11 +1351,13 @@ export class Chess {
                   let blockingRangingSquares = this._attacksOnEmptyBoard(to);
                   
                   // get intersection of blocking pieces
-                  let intersection = this._intersectionOfAttackingSquares(from,offset,rangingSquares,blockingRangingSquares);
+                  let intersection = this._intersectionOfAttackingSquares(from,to,offset,rangingSquares,blockingRangingSquares);
+                  // also include the piece that is blocking space
+                  intersection.add(to);
                   
                   // add each intersection add the move to movelist
                   for (let square of intersection) {
-                    addMove(moves, color, from, square, type); // Consider adding a new flag: BITS.XRAY
+                    addMove(moves, color, from, square, type); // Consider adding a new flag: BITS.XRAY                    
                   }
                 }
                 
@@ -1357,7 +1374,22 @@ export class Chess {
 
       
     }
-    return moves;
+    const uniqueMoves = moves.reduce((result, item) => {
+      const exists = result.some((existingItem) =>
+          existingItem.from === item.from && existingItem.to === item.to
+      );
+      if (!exists) {
+          result.push(item);
+      }
+      return result;
+  }, [] as InternalMove[]);
+  
+  // Now `uniqueMoves` contains objects where both attributes are not duplicate values.
+  
+    // return moves;
+    console.log("Unique moves:", uniqueMoves);
+  return uniqueMoves;
+
     /*
      * return all pseudo-legal moves (this includes moves that allow the king
      * to be captured)
@@ -1534,8 +1566,8 @@ export class Chess {
     if (us === BLACK) {
       this._moveNumber++
     }
-    this._getKingQueenPos();
-    this._updateKingControls();
+    // this._getKingQueenPos();
+    // this._updateKingControls();
     this._turn = them
   }
 
