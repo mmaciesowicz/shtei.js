@@ -1058,19 +1058,24 @@ export class Chess {
   }
 
   // Used for detecting attacks through blocking pieces. Finds what common squares do two piece attack?
-  private _intersectionOfAttackingSquares(aSquare: number, bSquare: number, offset: number, a: Set<number>, b: Set<number>) {
-    console.log("a: ",a);
-    console.log("b:", b);
-    const intersection = new Set([...a].filter(x => b.has(x)));
-    // const sameDirection = new Set([...intersection].filter(x => (x-initialSquare) % offset === 0));
-    console.log("intersection of attacks for square: ", aSquare);
-    console.log(intersection);
-    // return sameDirection;
-    return intersection;
-  }
-
-  // Returns a set of legal attacking moves of the piece on the given (from) squareNumber on a board with no other pieces
-  private _attacksOnEmptyBoard(from: number): Set<number>{
+  // private _intersectionOfAttackingSquares(aSquare: number, bSquare: number, offset: number, a: Set<number>, b: Set<number>) {
+  //   console.log("a: ",a);
+  //   console.log("b:", b);
+  //   const intersection = new Set([...a].filter(x => b.has(x)));
+  //   const sameDirection = new Set([...intersection].filter(x => Math.abs(x-aSquare) % offset === 0));
+  //   console.log("intersection of attacks for square: ", aSquare , " through square: ", bSquare);
+  //   console.log(sameDirection);
+  //   return sameDirection;
+  //   // return intersection;
+  // }
+  private _intersectionOfSets(set1: Set<any>, set2: Set<any>): Set<any> {
+    return new Set([...set1].filter(x => set2.has(x)));
+  } 
+  private _unionOfSets(set1: Set<any>, set2: Set<any>): Set<any> {
+    return new Set([...set1, ...set2]);
+  } 
+  
+  private _attacksInDirectionOnEmptyBoard(from: number, offset: number): Set<number>{
     let moves = new Set<number>();
     // empty square, return empty set
     if (!this._board[from]) {
@@ -1079,24 +1084,30 @@ export class Chess {
     const { type, color } = this._board[from];
     
     let to: number;
-    // pawn is special case because not all legal moves are attacking moves
+    
+    let offsetList: number[];
+    // get index of direction in OFFSETS
     if (type === PAWN) {
-      // pawn captures
-      for (let j = 2; j < 4; j++) {
-        to = from + PAWN_OFFSETS[color][j];
+      offsetList = PAWN_OFFSETS[color].slice(2,4);
+    }
+    else {
+      offsetList = PIECE_OFFSETS[type];
+    }
+    let index = offsetList.indexOf(offset);
+
+    // is the current offset legal for this piece?
+    if (index >=0) {
+      if (type === PAWN) {
+        to = from + PAWN_OFFSETS[color][index];
 
         // ensure to is on the board and subtraction doesn't wrap over to next row
-        if (!(to >=0 && to <= 99 && (Math.abs(rank(from) - rank(to)) <= 1) && Math.abs(file(from) - file(to)) <= 1)) continue;
+        if (!(to >=0 && to <= 99 && (Math.abs(rank(from) - rank(to)) <= 1) && Math.abs(file(from) - file(to)) <= 1)) return moves;
 
         // legal move, add to set
         moves.add(to);
+        return moves;
       }
-    }
-    else {
-      // piece  is not a pawn, check all directions for next move
-      for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
-        const offset = PIECE_OFFSETS[type][j];
-
+      else {
         to = from;
         let count = 0
         while (true) {
@@ -1133,9 +1144,174 @@ export class Chess {
           if (type === KNIGHT || type === KING || (type === MINISTER && count >=2)) break
         }
       }
-    } 
-    return moves;  
+    }
+    return moves; // empty set if offset not legal for piece, or the to spaces if legal
+
   }
+
+  private _movesFromAtoB(from: number, legalMovesEmptyBoard: Set<number>, offset: number): [Set<number>, number] {
+    let moves = new Set<number>();
+    const { type, color } = this._board[from];
+    let to = from;
+    while(legalMovesEmptyBoard.has(to + offset)) {
+      to = to + offset;
+      moves.add(to);
+      if (!this._board[to]) {
+        continue;
+      }
+      // piece blocking
+      else {
+        break;
+      }
+    }
+    
+    return [moves,to]; // where to is considered as "last move"
+  }
+
+  private _convertSquareSetToInternalMoves(from: number, setAtoB: Set<number>, Bsquare: any, color: Color, type: PieceSymbol, last=true) {
+    let moves: InternalMove[] = [];
+    for(let value of setAtoB) {
+      if (last && value === Bsquare) {
+        // if opponent piece, we can capture
+        if (this.pieceInControlByColour(swapColor(color),Bsquare) && type !== KING) {
+          addMove(moves,color,from,value,type,this._board[value].type,BITS.CAPTURE);
+        }
+        else {
+          continue;
+        }
+      }
+      else { // non-capturing piece
+        addMove(moves,color,from,value,type);
+      }
+    }
+    return moves;
+  }
+
+  // recursive function if xray to include blocking
+  private _getMovesForPieceInDirection(from: number, offset: number, legalMovesEmptyBoard: Set<number>, xray: boolean): InternalMove[] {
+    let moves: InternalMove[] = [];
+    // if (xray) {
+    //   moves = new Set<number>();
+    // }
+    // else {
+    //   moves = [];
+    // }
+    // empty square, return empty set
+    if (!this._board[from]) {
+      return moves;
+    }
+    const { type, color } = this._board[from];
+
+    // moves in direction
+    const Amoves = legalMovesEmptyBoard;
+
+    // moves from square A to square B in same direction
+    // Bsquare is last item in AtoB
+    const [AtoB,Bsquare] = this._movesFromAtoB(from, Amoves, offset);
+
+    moves = this._convertSquareSetToInternalMoves(from, AtoB,Bsquare,color,type);
+
+    // moves are just movesFromAtoB if we don't want xray or if there are no other moves in range
+    if (!xray || Bsquare === from) {
+      return moves;
+    }
+
+    const Bmoves = this._attacksInDirectionOnEmptyBoard(Bsquare,offset);
+
+    let B_onwards = new Set<number>();
+    const AandB = this._intersectionOfSets(Amoves,Bmoves);
+
+    for (let value of AandB) {
+      B_onwards.add(value);
+      if (!this._board[value]) {
+        continue;
+      }
+      // opponent piece
+      else if (this.pieceInControlByColour(swapColor(color),value)) {
+        break;
+      }
+      else {
+        const B_next = this._getMovesForPieceInDirection(Bsquare, offset, AandB,true); // recursive
+        if (B_next instanceof Set) {
+          B_onwards = this._unionOfSets(B_onwards,B_next);
+        }
+        break; // stop looping through rest of values
+      }
+    }
+
+    moves = [...moves, ...this._convertSquareSetToInternalMoves(from,B_onwards,null,color,type,false)];
+
+    // return this._intersectionOfSets(AtoB,B_onwards);
+    return moves;
+  }
+
+  // Returns a set of legal attacking moves of the piece on the given (from) squareNumber on a board with no other pieces
+  // private _attacksOnEmptyBoard(from: number): Set<number>{
+  //   let moves = new Set<number>();
+  //   // empty square, return empty set
+  //   if (!this._board[from]) {
+  //     return moves;
+  //   }
+  //   const { type, color } = this._board[from];
+    
+  //   let to: number;
+  //   // pawn is special case because not all legal moves are attacking moves
+  //   if (type === PAWN) {
+  //     // pawn captures
+  //     for (let j = 2; j < 4; j++) {
+  //       to = from + PAWN_OFFSETS[color][j];
+
+  //       // ensure to is on the board and subtraction doesn't wrap over to next row
+  //       if (!(to >=0 && to <= 99 && (Math.abs(rank(from) - rank(to)) <= 1) && Math.abs(file(from) - file(to)) <= 1)) continue;
+
+  //       // legal move, add to set
+  //       moves.add(to);
+  //     }
+  //   }
+  //   else {
+  //     // piece  is not a pawn, check all directions for next move
+  //     for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
+  //       const offset = PIECE_OFFSETS[type][j];
+
+  //       to = from;
+  //       let count = 0
+  //       while (true) {
+  //         to += offset
+  //         count +=1
+  //         // if (to & 0x88) break
+  //         const notSameRank = Math.abs(rank(from) - rank(to)) > 0;
+  //         const notSameFile = Math.abs(file(from) - file(to)) > 0;
+  //         // need to account for going off the edge of board
+  //         if (type === KING && (Math.abs(file(from) - file(to)) > 1 || Math.abs(rank(from) - rank(to)) > 1)) break;
+
+  //         // check that knight movement doesn't go out of bounds
+  //         if (type === KNIGHT ) {
+  //           const absDifference = Math.abs(from - to)
+  //           if ((absDifference === 19 || absDifference === 21 || absDifference === 8 || absDifference === 12) 
+  //               && Math.abs(file(from) - file(to)) > 2) break;
+  //         }
+
+  //         // horizontal movement must stay on same rank
+  //         if (Math.abs(offset) === 1 && notSameRank) break;
+
+  //         // vertical movement must stay on same file
+  //         if (Math.abs(offset) === 10 && notSameFile) break;
+          
+  //         // diagonal movement must not be on same file or rank
+  //         const diagonal = Math.abs(offset) === 9 || Math.abs(offset) === 11;
+  //         if (diagonal && (Math.abs(rank(from) - rank(to)) !== count || Math.abs(file(from) - file(to)) !== count)) break;
+
+  //         if (!(to >=0 && to <= 99)) break;
+
+  //         moves.add(to);
+
+  //         /* break, if knight, minister or king to avoid recounting offsets */
+  //         if (type === KNIGHT || type === KING || (type === MINISTER && count >=2)) break
+  //       }
+  //     }
+  //   } 
+  //   return moves;  
+  // }
 
 
   //moves(): string[]
@@ -1237,7 +1413,7 @@ export class Chess {
     const forSquare = square ? (square.toLowerCase() as Square) : undefined
     const forPiece = piece?.toLowerCase()
 
-    const moves: InternalMove[] = []
+    let moves: InternalMove[] = []
     const us = moveColor
     const them = swapColor(us)
 
@@ -1307,67 +1483,95 @@ export class Chess {
         } 
         // else not a pawn
         else {
-          // get all legal squares not including piece blockage
-          let rangingSquares = this._attacksOnEmptyBoard(from);
-          
           // we found a piece that is not a pawn, check all directions for next move
           for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
             const offset = PIECE_OFFSETS[type][j];
-
-            to = from;
-            let count = 0
-            
-            let blockingPieces: number[] = []
-            // loop until move is not legal (off the board)
-            while (rangingSquares.has(to+offset)) {
-              to = to+offset;
-              // if there is a piece
-              if (this._board[to]) {
-                // if it is opponent colour, we can capture it.
-                if (!this.pieceInControlByColour(us,to) && this._board[to].type !== KING) {
-                  addMove(moves,color,from,to,type,this._board[to].type,BITS.CAPTURE);
-                  break;
-                }
-                // case where KING unites QUEEN (WIN!)
-                else if (this._board[to].type === KING && this._board[to].color === us && 
-                  this._board[from].type === QUEEN && this._board[from].color === us) {
-                  addMove(moves,color,from,to,type,this._board[to].type,BITS.UNITE_WIN);
-                  break;
-                }
-                // case where our piece takes their queen (WIN!)
-                else if (to === this._queens[them]) {
-                  addMove(moves,color,from,to,type,this._board[to].type,BITS.QTAKE_WIN);
-                  break;
-                }
-                else if (!xray || !this.pieceInControlByColour(us,to)) break; // if we don't want to search through pieces, or piece not in our control
-                else {
-                  /**********************
-                   * 
-                   * BEGIN XRAY
-                   * 
-                  ***********************/
-                  
-                  // get rangingSquares for this blocking piece if xray on
-                  let blockingRangingSquares = this._attacksOnEmptyBoard(to);
-                  
-                  // get intersection of blocking pieces
-                  let intersection = this._intersectionOfAttackingSquares(from,to,offset,rangingSquares,blockingRangingSquares);
-                  // also include the piece that is blocking space
-                  intersection.add(to);
-                  
-                  // add each intersection add the move to movelist
-                  for (let square of intersection) {
-                    addMove(moves, color, from, square, type); // Consider adding a new flag: BITS.XRAY                    
-                  }
-                }
+            const movesEmptyBoard = this._attacksInDirectionOnEmptyBoard(from,offset);
+            let pieceMoves = this._getMovesForPieceInDirection(from,offset,movesEmptyBoard,xray);
+            moves = [...moves, ...pieceMoves];
+            // if (pieceMoves instanceof Set) {
+            //   // getMovesForPiece returns set of items if xray
+            //   for (let square of pieceMoves) {
+            //     addMove(moves, color, from, square, type); // Consider adding a new flag: BITS.XRAY                    
+            //   }
+            // }
+            // else {
+            //   // pieceMoves returns a list of InternalMoves
+            //   // combine with current list of moves
+            //   moves.push(...pieceMoves);
+            // }
                 
-              }
-              // no piece blocking, add as possible move
-              else {
-                addMove(moves, color, from, to, type);
-              }          
-            }
           }
+
+
+          // get all legal squares not including piece blockage
+          // let rangingSquares = this._attacksOnEmptyBoard(from);
+          
+          // // we found a piece that is not a pawn, check all directions for next move
+          // for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
+          //   const offset = PIECE_OFFSETS[type][j];
+
+          //   to = from;
+          //   let count = 0
+            
+          //   // let blockingPieces: number[] = [];
+          //   let currPieceRange: number[] = [];
+          //   // loop until move is not legal (off the board)
+          //   while (rangingSquares.has(to+offset)) {
+          //     to = to+offset;
+          //     // if there is a piece
+          //     if (this._board[to]) {
+          //       // if it is opponent colour, we can capture it.
+          //       if (!this.pieceInControlByColour(us,to) && this._board[to].type !== KING) {
+          //         addMove(moves,color,from,to,type,this._board[to].type,BITS.CAPTURE);
+          //         break;
+          //       }
+          //       // case where KING unites QUEEN (WIN!)
+          //       else if (this._board[to].type === KING && this._board[to].color === us && 
+          //         this._board[from].type === QUEEN && this._board[from].color === us) {
+          //         addMove(moves,color,from,to,type,this._board[to].type,BITS.UNITE_WIN);
+          //         break;
+          //       }
+          //       // case where our piece takes their queen (WIN!)
+          //       else if (to === this._queens[them]) {
+          //         addMove(moves,color,from,to,type,this._board[to].type,BITS.QTAKE_WIN);
+          //         break;
+          //       }
+          //       else if (!xray || !this.pieceInControlByColour(us,to)) break; // if we don't want to search through pieces, or piece not in our control
+          //       else {
+          //         /**********************
+          //          * 
+          //          * BEGIN XRAY
+          //          * 
+          //         ***********************/
+          //         // no xray for king since it only has range of 1
+          //         if (type === KING) {
+          //           continue;
+          //         }
+                  
+          //         // get rangingSquares for this blocking piece if xray on
+          //         let blockingRangingSquares = this._attacksOnEmptyBoard(to);
+                  
+          //         // get intersection of blocking pieces
+          //         let intersection = this._intersectionOfAttackingSquares(from,to,offset,rangingSquares,blockingRangingSquares);
+          //         // also include the piece that is blocking space
+          //         intersection.add(to);
+                  
+          //         // add each intersection add the move to movelist
+          //         for (let square of intersection) {
+          //           addMove(moves, color, from, square, type); // Consider adding a new flag: BITS.XRAY                    
+          //         }
+          //         break;
+          //       }
+                
+          //     }
+          //     // no piece blocking, add as possible move
+          //     else {
+          //       addMove(moves, color, from, to, type);
+          //       currPieceRange.push(to);
+          //     }          
+            // }
+          
         }
 
       }
