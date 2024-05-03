@@ -521,7 +521,10 @@ export class Chess {
   constructor(fen = DEFAULT_POSITION) {
     // this.load(fen=fen,{skipValidation: true});
     this.load(fen=fen);
-    this._getInitialKingQueenPos();
+    this._getKingQueenPos();
+    console.log("constructor!!");
+    console.log("constructor fen: ", fen);
+    console.log(this._kings);
     this._updateKingControls();
 
     // DEBUGGING
@@ -544,18 +547,22 @@ export class Chess {
     // console.log(this.moves({verbose:true,xray: false}));
   }
 
-  private _getInitialKingQueenPos() {
+  private _getKingQueenPos() {
     for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
       if (this._board[i]) {
-        if(this._board[i].type === 'k') {
+        if(this._board[i].type === KING) {
           let pieceColor = this._board[i].color;
-          console.log(pieceColor + " king at " + i);
-          pieceColor === BLACK ? this._kings.b = i : this._kings.w = i;
+          // console.log(pieceColor + " king at " + i);
+          // pieceColor === BLACK ? this._kings.b = i : this._kings.w = i;
+          this._kings[pieceColor] = i;
+          console.log("getKingQueenPos: " + " king pos:" + this._kings[pieceColor]);
         }
-        if(this._board[i].type === 'q') {
+        if(this._board[i].type === QUEEN) {
           let pieceColor = this._board[i].color;
-          console.log(pieceColor + " queen at " + i);
-          pieceColor === BLACK ? this._queens.b = i : this._queens.w = i;
+          // console.log(pieceColor + " queen at " + i);
+          // pieceColor === BLACK ? this._queens.b = i : this._queens.w = i;
+          this._queens[pieceColor] = i;
+          console.log("getKingQueenPos: " + " queen pos:" + this._queens[pieceColor]);
         }
       }
     }
@@ -887,14 +894,14 @@ export class Chess {
   }
 
   private _updateKingControls() {
-    const whiteKingPos = this._kings[WHITE];
-    const blackKingPos = this._kings[BLACK];
+    let whiteKingPos = this._kings[WHITE];
+    let blackKingPos = this._kings[BLACK];
 
-    const blackAttacksWhiteKing = this._numTimesAttacked({color: BLACK, square: whiteKingPos});
-    const whiteAttacksWhiteKing = this._numTimesAttacked({color: WHITE, square: whiteKingPos});
+    let blackAttacksWhiteKing = this._numTimesAttacked({color: BLACK, square: whiteKingPos});
+    let whiteAttacksWhiteKing = this._numTimesAttacked({color: WHITE, square: whiteKingPos});
 
-    const whiteAttacksBlackKing = this._numTimesAttacked({color: WHITE, square: blackKingPos});
-    const blackAttacksBlackKing = this._numTimesAttacked({color: BLACK, square: blackKingPos});
+    let whiteAttacksBlackKing = this._numTimesAttacked({color: WHITE, square: blackKingPos});
+    let blackAttacksBlackKing = this._numTimesAttacked({color: BLACK, square: blackKingPos});
 
     // Compare number of times black and white attack the white king
     if (blackAttacksWhiteKing < whiteAttacksWhiteKing) {
@@ -944,14 +951,12 @@ export class Chess {
     let numTimesAttacked = 0;
     const moves = this._moves({xray: xray, moveColor: color});
     // DEBUGGING:
-    const movesNoXray = this._moves({xray: false, moveColor: color});
-    console.log("no xray moves:");
-    console.log(movesNoXray);
+    // const movesNoXray = this._moves({xray: false, moveColor: color});
+    // console.log("no xray moves:");
+    // console.log(movesNoXray);
     
     for (let i=0; i<moves.length; i++){     
       if (moves[i].to === square) {
-        console.log(moves[i]);
-        console.log(`${moves[i].from} attacks ${square}`);
         numTimesAttacked++;
       }
     }
@@ -1496,12 +1501,12 @@ export class Chess {
     // if we moved the king
     if (this._board[move.to].type === KING) {
       this._kings[us] = move.to;
-      console.log(us + " king moved to: " +  this._kings[us]);
+      // console.log(us + " king moved to: " +  this._kings[us]);
     }
     // if we moved the queen
     if (this._board[move.to].type === QUEEN) {
       this._queens[us] = move.to;
-      console.log(us + " queen moved to: " +  this._queens[us]);
+      // console.log(us + " queen moved to: " +  this._queens[us]);
     }
 
     // if big pawn move, update the en passant square
@@ -1529,8 +1534,8 @@ export class Chess {
     if (us === BLACK) {
       this._moveNumber++
     }
+    this._getKingQueenPos();
     this._updateKingControls();
-    // console.log(this._kingControllers);
     this._turn = them
   }
 
