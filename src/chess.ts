@@ -1152,13 +1152,19 @@ export class Chess {
 
   private _movesFromAtoB(from: number, legalMovesEmptyBoard: Set<number>, offset: number): [Set<number>, number] {
     let moves = new Set<number>();
+    const color = this.pieceInControlByColour(WHITE,from) ? WHITE : BLACK;
     let to = from;
     while(legalMovesEmptyBoard.has(to + offset)) {
       to = to + offset;
       if (!this._board[to]) {
         moves.add(to);
-      }      
-      // piece blocking
+      }
+      else if (!this.pieceInControlByColour(color,to)){
+        // can take the attacking square
+        moves.add(to);
+        break;
+      }
+      // own piece blocking
       else {
         break;
       }
@@ -1170,12 +1176,12 @@ export class Chess {
   private _convertSquareSetToInternalMoves(from: number, setAtoB: Set<number>, moveColor: Color, moveType: PieceSymbol) {
     let moves: InternalMove[] = [];
     for(let value of setAtoB) {
-      if (this._board[value]) {
-        // piece here, must be capturable
-        addMove(moves,moveColor,from,value,moveType,this._board[value].type,BITS.CAPTURE);
-      }
-      else { // non-capturing piece
+      if (!this._board[value]) {
         addMove(moves,moveColor,from,value,moveType);
+      }
+      else if (this._board[value] && this._board[value].type !== KING) {
+        // piece here is capturable
+        addMove(moves,moveColor,from,value,moveType,this._board[value].type,BITS.CAPTURE);
       }
     }
     return moves;
