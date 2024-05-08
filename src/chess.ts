@@ -964,9 +964,22 @@ export class Chess {
     // console.log("no xray moves:");
     // console.log(movesNoXray);
     
+    // get all non-pawn moves
     for (let i=0; i<moves.length; i++){     
       if (moves[i].to === square) {
         numTimesAttacked++;
+      }
+    }
+    // get pawn attacks
+    for (let from = SquareCode.a10; from <= SquareCode.j1; from++) {
+      // empty square or piece not in our control, skip
+      if(!this._board[from]) {
+        continue;
+      }
+      else if(this._board[from].type === PAWN && this._board[from].color === color) {
+        if(square === (from+PAWN_OFFSETS[color][2]) || square === (from+PAWN_OFFSETS[color][3])) {
+          numTimesAttacked++;
+        }
       }
     }
 
