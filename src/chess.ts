@@ -1230,14 +1230,14 @@ export class Chess {
     }
     
 
-    console.log("Bsquare:",Bsquare);
+    // console.log("Bsquare:",Bsquare);
 
     const Bmoves = this._attacksInDirectionOnEmptyBoard(Bsquare,offset);
-    console.log("Bmoves:",Bmoves);
+    // console.log("Bmoves:",Bmoves);
 
     let B_onwards = new Set<number>();
     const AandB = this._intersectionOfSets(Amoves,Bmoves);
-    console.log("AandB:",AandB);
+    // console.log("AandB:",AandB);
     for (let value of AandB) {
       B_onwards.add(value);
       if (!this._board[value]) {
@@ -1248,19 +1248,26 @@ export class Chess {
         break;
       }
       else {
-        const B_next = this._getMovesForPieceInDirection(Bsquare, offset, AandB,true); // recursive
-        if (B_next instanceof Set) {
-          B_onwards = this._unionOfSets(B_onwards,B_next);
-        }
+        // another own piece blocking (C), get AandBtoC union Csquare
+        const B_nextList = this._getMovesForPieceInDirection(Bsquare, offset, AandB,true); // recursive
+        // get to locations
+        const B_nextTo = B_nextList.map(obj => obj.to);
+        const B_next: Set<number> = new Set<number>(B_nextTo);
+        // console.log("B square:",Bsquare, " B_next: ", B_next);
+        // console.log("B square:",Bsquare, "First B_onwards:",B_onwards);
+        B_onwards = this._unionOfSets(B_onwards,B_next);
+        // if (B_next instanceof Set) {
+        //   B_onwards = this._unionOfSets(B_onwards,B_next);
+        // }
         break; // stop looping through rest of values
       }
     }
-    console.log("B_onwards:",B_onwards);
+    // console.log("B square:",Bsquare, "B_onwards:",B_onwards);
 
     moves = [...moves, ...this._convertSquareSetToInternalMoves(from,B_onwards,color,type,xray)];
 
     // return this._intersectionOfSets(AtoB,B_onwards);
-    console.log("Xray moves for piece on square: ", from, ": ", moves);
+    // console.log("Xray moves for piece on square: ", from, ": ", moves);
     return moves;
   }
 
