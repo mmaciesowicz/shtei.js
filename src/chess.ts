@@ -906,11 +906,11 @@ export class Chess {
     // console.log("black king pos updatekingcontrols: ", blackKingPos);
 
 
-    let blackAttacksWhiteKing = this._numTimesAttacked({color: BLACK, square: whiteKingPos});
-    let whiteAttacksWhiteKing = this._numTimesAttacked({color: WHITE, square: whiteKingPos});
+    let blackAttacksWhiteKing = this._numTimesAttacked({color: BLACK, square: whiteKingPos, xray: true});
+    let whiteAttacksWhiteKing = this._numTimesAttacked({color: WHITE, square: whiteKingPos, xray: true});
 
-    let whiteAttacksBlackKing = this._numTimesAttacked({color: WHITE, square: blackKingPos});
-    let blackAttacksBlackKing = this._numTimesAttacked({color: BLACK, square: blackKingPos});
+    let whiteAttacksBlackKing = this._numTimesAttacked({color: WHITE, square: blackKingPos, xray: true});
+    let blackAttacksBlackKing = this._numTimesAttacked({color: BLACK, square: blackKingPos, xray: true});
 
     // Compare number of times black and white attack the white king
     if (blackAttacksWhiteKing < whiteAttacksWhiteKing) {
@@ -926,12 +926,12 @@ export class Chess {
     else {
       this._kingControllers[BLACK] = WHITE;
     }
-    // console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
-    // console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
-    // console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
-    // console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
-    // console.log("King controllers: ");
-    // console.log(this._kingControllers);
+    console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
+    console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
+    console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
+    console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
+    console.log("King controllers: ");
+    console.log(this._kingControllers);
   }
 
   // Does a piece on square1 attack a piece on square2?
@@ -956,7 +956,7 @@ export class Chess {
     return false;
   }
   // color = attacking color
-  private _numTimesAttacked({color,square,xray=true}: {color: Color, square: number,xray?: boolean}): number {
+  private _numTimesAttacked({color,square,xray}: {color: Color, square: number,xray: boolean}): number {
     let numTimesAttacked = 0;
     const moves = this._moves({xray: xray, moveColor: color});
     // DEBUGGING:
@@ -1099,7 +1099,7 @@ export class Chess {
     // is the current offset legal for this piece?
     if (index >=0) {
       if (type === PAWN) {
-        to = from + PAWN_OFFSETS[color][index];
+        to = from + offsetList[index];
 
         // ensure to is on the board and subtraction doesn't wrap over to next row
         if (!(to >=0 && to <= 99 && (Math.abs(rank(from) - rank(to)) <= 1) && Math.abs(file(from) - file(to)) <= 1)) return moves;
@@ -1150,6 +1150,7 @@ export class Chess {
 
   }
 
+  // searches through the legal moves and returns all moves that don't jump over pieces
   private _movesFromAtoB(from: number, legalMovesEmptyBoard: Set<number>, offset: number): [Set<number>, number] {
     let moves = new Set<number>();
     const color = this.pieceInControlByColour(WHITE,from) ? WHITE : BLACK;
@@ -1173,7 +1174,7 @@ export class Chess {
     return [moves,to]; // where to is considered as "last move"
   }
 
-  private _convertSquareSetToInternalMoves(from: number, setAtoB: Set<number>, moveColor: Color, moveType: PieceSymbol) {
+  private _convertSquareSetToInternalMoves(from: number, setAtoB: Set<number>, moveColor: Color, moveType: PieceSymbol, xray: boolean) {
     let moves: InternalMove[] = [];
     for(let value of setAtoB) {
       if (!this._board[value]) {
@@ -1183,12 +1184,15 @@ export class Chess {
         // piece here is capturable
         addMove(moves,moveColor,from,value,moveType,this._board[value].type,BITS.CAPTURE);
       }
+      else if (xray) {
+        addMove(moves,moveColor,from,value,moveType);
+      }
     }
     return moves;
   }
 
   // recursive function if xray to include blocking
-  private _getMovesForPieceInDirection(from: number, offset: number, legalMovesEmptyBoard: Set<number>, xray: boolean=false): InternalMove[] {
+  private _getMovesForPieceInDirection(from: number, offset: number, legalMovesEmptyBoard: Set<number>, xray: boolean): InternalMove[] {
     let moves: InternalMove[] = [];
     // if (xray) {
     //   moves = new Set<number>();
@@ -1210,20 +1214,30 @@ export class Chess {
     const [AtoB,Bsquare] = this._movesFromAtoB(from, Amoves, offset);
     // console.log("AtoB:", AtoB);
 
-    // THIS IS THE ISSUE
-    moves = this._convertSquareSetToInternalMoves(from, AtoB,color,type);
+    moves = this._convertSquareSetToInternalMoves(from, AtoB,color,type,xray);
     // console.log("AtoB moves:", moves);
 
     // moves are just movesFromAtoB if we don't want xray or if there are no other moves in range
     if (!xray || Bsquare === from) {
       return moves;
     }
+    
+    // let BsquareSet = new Set<number>().add(Bsquare);
+
+    // add to xray list move that attacks blocking piece
+    if (this._board[Bsquare]){
+      addMove(moves,color,from,Bsquare,type,this._board[Bsquare].type,BITS.CAPTURE);
+    }
+    
+
+    console.log("Bsquare:",Bsquare);
 
     const Bmoves = this._attacksInDirectionOnEmptyBoard(Bsquare,offset);
+    console.log("Bmoves:",Bmoves);
 
     let B_onwards = new Set<number>();
     const AandB = this._intersectionOfSets(Amoves,Bmoves);
-
+    console.log("AandB:",AandB);
     for (let value of AandB) {
       B_onwards.add(value);
       if (!this._board[value]) {
@@ -1241,10 +1255,12 @@ export class Chess {
         break; // stop looping through rest of values
       }
     }
+    console.log("B_onwards:",B_onwards);
 
-    moves = [...moves, ...this._convertSquareSetToInternalMoves(from,B_onwards,color,type)];
+    moves = [...moves, ...this._convertSquareSetToInternalMoves(from,B_onwards,color,type,xray)];
 
     // return this._intersectionOfSets(AtoB,B_onwards);
+    console.log("Xray moves for piece on square: ", from, ": ", moves);
     return moves;
   }
 
