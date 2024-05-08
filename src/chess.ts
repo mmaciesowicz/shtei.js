@@ -181,7 +181,7 @@ const PIECE_OFFSETS = {
 
 const SYMBOLS = 'pnmbrqkPNBRQKM'
 
-const PROMOTIONS: PieceSymbol[] = [KNIGHT, BISHOP, ROOK, QUEEN, MINISTER]
+const PROMOTIONS: PieceSymbol[] = [BISHOP, KNIGHT, ROOK, QUEEN, MINISTER]
 
 // const RANK_1 = 7
 // const RANK_2 = 6
@@ -525,31 +525,7 @@ export class Chess {
   constructor(fen = DEFAULT_POSITION) {
     // this.load(fen=fen,{skipValidation: true});
     this.load(fen=fen);
-    // this._getKingQueenPos();
-    // console.log("constructor!!");
-    // console.log("constructor fen: ", fen);
-    // console.log(this._kings);
     this._updateKingControls();
-    console.log(this.moves({verbose: true,xray:false}));
-
-    // DEBUGGING
-    // for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
-    //   console.log("Square " + i + ":");
-    //   console.log(this._attacksOnEmptyBoard(i));
-    // }   
-    // let a,b;
-    // for (let i = SquareCode.a10; i <= SquareCode.j1; i++) {
-    //   for (let j = SquareCode.a10; j <= SquareCode.j1; j++) {
-    //     if (this._board[i] && this._board[j]) {
-    //       a = this._attacksOnEmptyBoard(i);
-    //       b = this._attacksOnEmptyBoard(j);
-
-    //       this._intersectionOfAttackingSquares(i,)
-    //     }
-    //   }
-    // }  
-    // console.log("Initial first moves: ");
-    // console.log(this.moves({verbose:true,xray: false}));
   }
 
   private _getKingQueenPos() {
@@ -903,10 +879,6 @@ export class Chess {
     let whiteKingPos = this._kings[WHITE];
     let blackKingPos = this._kings[BLACK];
 
-    // console.log("white king pos updatekingcontrols: ", whiteKingPos);
-    // console.log("black king pos updatekingcontrols: ", blackKingPos);
-
-
     let blackAttacksWhiteKing = this._numTimesAttacked({color: BLACK, square: whiteKingPos, xray: true});
     let whiteAttacksWhiteKing = this._numTimesAttacked({color: WHITE, square: whiteKingPos, xray: true});
 
@@ -927,12 +899,12 @@ export class Chess {
     else {
       this._kingControllers[BLACK] = WHITE;
     }
-    console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
-    console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
-    console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
-    console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
-    console.log("King controllers: ");
-    console.log(this._kingControllers);
+    // console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
+    // console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
+    // console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
+    // console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
+    // console.log("King controllers: ");
+    // console.log(this._kingControllers);
   }
 
   // Does a piece on square1 attack a piece on square2?
@@ -960,11 +932,7 @@ export class Chess {
   private _numTimesAttacked({color,square,xray}: {color: Color, square: number,xray: boolean}): number {
     let numTimesAttacked = 0;
     const moves = this._moves({xray: xray, moveColor: color});
-    // DEBUGGING:
-    // const movesNoXray = this._moves({xray: false, moveColor: color});
-    // console.log("no xray moves:");
-    // console.log(movesNoXray);
-    
+
     // get all non-pawn moves
     for (let i=0; i<moves.length; i++){     
       if (moves[i].to === square) {
@@ -1000,8 +968,7 @@ export class Chess {
 
   private _isQueenAttacked(queenColor: Color) {
     const square = this._queens[queenColor];
-    // console.log(this._turn + " queen is on square: " + square)
-    // console.log(queenColor + " queen is attacked: " + this._numTimesAttacked({color:swapColor(queenColor), square: square, xray: false}) + " times");
+
     return square === -1 ? false : this._numTimesAttacked({color:swapColor(queenColor), square: square, xray: false});
   }
 
@@ -1483,7 +1450,7 @@ export class Chess {
         
         const { type, color } = this._board[from];
         if (type === KING) {
-          console.log(us, " controls ", color, " king on ", from, ", generating moves for", moveColor);
+          // console.log(us, " controls ", color, " king on ", from, ", generating moves for", moveColor);
         }
         
         let to: number
@@ -1628,7 +1595,9 @@ export class Chess {
     }
     const uniqueMoves = moves.reduce((result, item) => {
       const exists = result.some((existingItem) =>
-          existingItem.from === item.from && existingItem.to === item.to
+          existingItem.from === item.from && 
+          existingItem.to === item.to && 
+          existingItem.promotion === item.promotion
       );
       if (!exists) {
           result.push(item);
