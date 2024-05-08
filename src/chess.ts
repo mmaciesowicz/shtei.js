@@ -525,7 +525,7 @@ export class Chess {
   constructor(fen = DEFAULT_POSITION) {
     // this.load(fen=fen,{skipValidation: true});
     this.load(fen=fen);
-    this._getKingQueenPos();
+    // this._getKingQueenPos();
     // console.log("constructor!!");
     // console.log("constructor fen: ", fen);
     // console.log(this._kings);
@@ -899,6 +899,7 @@ export class Chess {
   }
 
   private _updateKingControls() {
+    this._getKingQueenPos();
     let whiteKingPos = this._kings[WHITE];
     let blackKingPos = this._kings[BLACK];
 
@@ -913,14 +914,14 @@ export class Chess {
     let blackAttacksBlackKing = this._numTimesAttacked({color: BLACK, square: blackKingPos, xray: true});
 
     // Compare number of times black and white attack the white king
-    if (blackAttacksWhiteKing < whiteAttacksWhiteKing) {
+    if (whiteAttacksWhiteKing >= blackAttacksWhiteKing) {
       this._kingControllers[WHITE] = WHITE;
     }
     else {
       this._kingControllers[WHITE] = BLACK;
     }
 
-    if (whiteAttacksBlackKing < blackAttacksBlackKing) {
+    if (blackAttacksBlackKing >= whiteAttacksBlackKing) {
       this._kingControllers[BLACK] = BLACK;
     }
     else {
@@ -1061,11 +1062,13 @@ export class Chess {
     }
     const { type, color } = this._board[square];
     // check if specified colour controls king
-    if (type === KING && this._kingControllers[color] === colour) {
-      return true;
+    if (type === KING) {
+      if (this._kingControllers[color] === colour) {
+        return true;
+      }
     }
     // same colour pieces are controlled by player
-    else if (color === colour && type !== KING) {
+    else if (color === colour) {
       return true;
     }
     return false;
@@ -1423,7 +1426,7 @@ export class Chess {
        color?: Color | undefined;
        xray?: boolean;
     } = {}) {
-    
+    this._updateKingControls();
     if (verbose) {
       const moves = this._moves({ piece: piece, square: square, moveColor: color })
       return moves.map((move) => this._makePretty(move))
@@ -1477,8 +1480,11 @@ export class Chess {
         continue;
       }
       if (this.pieceInControlByColour(us,from)) {
-        // console.log(us + " controls " + from + ", generating moves");
+        
         const { type, color } = this._board[from];
+        if (type === KING) {
+          console.log(us, " controls ", color, " king on ", from, ", generating moves for", moveColor);
+        }
         
         let to: number
         if (type === PAWN) {
