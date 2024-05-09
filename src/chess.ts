@@ -1145,7 +1145,7 @@ export class Chess {
       if (!this._board[to]) {
         moves.add(to);
       }
-      else if (!this.pieceInControlByColour(color,to)){
+      else if (this.pieceInControlByColour(swapColor(color),to)){
         // can take the attacking square
         moves.add(to);
         break;
@@ -1210,7 +1210,11 @@ export class Chess {
     // let BsquareSet = new Set<number>().add(Bsquare);
 
     // add to xray list move that attacks blocking piece
-    if (this._board[Bsquare]){
+    if (this._board[Bsquare] && this.pieceInControlByColour(swapColor(color),Bsquare)){
+      addMove(moves,color,from,Bsquare,type,this._board[Bsquare].type,BITS.CAPTURE);
+      return moves;
+    }
+    else if (this._board[Bsquare]) {
       addMove(moves,color,from,Bsquare,type,this._board[Bsquare].type,BITS.CAPTURE);
     }
     
@@ -1222,6 +1226,7 @@ export class Chess {
 
     let B_onwards = new Set<number>();
     const AandB = this._intersectionOfSets(Amoves,Bmoves);
+
     // console.log("AandB:",AandB);
     for (let value of AandB) {
       B_onwards.add(value);
