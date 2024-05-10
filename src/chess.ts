@@ -549,6 +549,7 @@ export class Chess {
     this.load(fen=fen, {preserveHeaders:true});
     // console.log("FEN: ", fen);
     this._updateKingControls();
+    console.log(`Turn ${this._moveNumber}. Legal moves for ${this._turn === BLACK ? "black" : "white"}:`, this.moves({verbose: true, xray: false}));
   }
 
   private _getKingQueenPos() {
