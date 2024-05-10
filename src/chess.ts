@@ -544,10 +544,11 @@ export class Chess {
 
   constructor(fen = DEFAULT_POSITION) {
     // this.load(fen=fen,{skipValidation: true});
-    this.load(fen=fen);
+
+    // preserve headers to save repetition counts
+    this.load(fen=fen, {preserveHeaders:true});
     // console.log("FEN: ", fen);
     this._updateKingControls();
-    console.log("position counts:", this._positionCounts);
   }
 
   private _getKingQueenPos() {
@@ -641,7 +642,7 @@ export class Chess {
     const position = tokens[0]
     let square = 0
 
-    // this.clear({ preserveHeaders })
+    this.clear({ preserveHeaders })
 
     for (let i = 0; i < position.length; i++) {
       const piece = position.charAt(i)
