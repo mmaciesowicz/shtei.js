@@ -36,9 +36,10 @@ export const ROOK = 'r'
 export const QUEEN = 'q'
 export const KING = 'k'
 export const MONK = 'g'
+export const UNITE = 'u'
 
 export type Color = 'w' | 'b'
-export type PieceSymbol = 'p' | 'm' | 'n' | 'b' | 'r' | 'q' | 'k' | 'g'
+export type PieceSymbol = 'p' | 'm' | 'n' | 'b' | 'r' | 'q' | 'k' | 'g' | 'u'
 
 // prettier-ignore
 export type Square =
@@ -178,10 +179,11 @@ const PIECE_OFFSETS = {
   k: [-11, -10, -9, -1, 1, 9, 10, 11],
   m: [-11, -10, -9, -1, 1, 9, 10, 11],
   g: [-11, -10, -9, -1, 1, 9, 10, 11],
+  u: [],
 }
 
 
-const SYMBOLS = 'pnmbgrqkPNBRQKMG'
+const SYMBOLS = 'pnmbgruqkPNBRQKMGU'
 
 const PROMOTIONS: PieceSymbol[] = [BISHOP, KNIGHT, ROOK, MONK, MINISTER]
 
@@ -331,7 +333,7 @@ export function validateFen(fen: string) {
         sumFields += parseInt(rows[i][k], 10)
         previousWasNumber = true
       } else {
-        if (!/^[prnmbqgkPMRNBQKG]$/.test(rows[i][k])) {
+        if (!/^[prunmbqgkPMURNBQKG]$/.test(rows[i][k])) {
           return {
             ok: false,
             error: 'Invalid FEN: piece data is invalid (invalid piece)',
