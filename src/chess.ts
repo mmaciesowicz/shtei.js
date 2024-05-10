@@ -260,7 +260,7 @@ function expandFenEmptySquares(fen: string): string {
 }
 
 export function validateFen(fen: string) {
-  // 1st criterion: 6 space-seperated fields? (\s is whitespace character)
+  // 1st criterion: 5 space-seperated fields? (\s is whitespace character)
   const tokens = fen.split(/\s+/)
   // console.log("tokens: ",tokens);
   if (tokens.length !== 5) {
@@ -520,10 +520,10 @@ function addMove(
 
 function trimFen(fen: string): string {
   /*
-   * remove last two fields in FEN string as they're not needed when checking
+   * remove last two fields (HalfMove and fullmove) in FEN string as they're not needed when checking
    * for repetition
    */
-  return fen.split(' ').slice(0, 4).join(' ')
+  return fen.split(' ').slice(0, 3).join(' ')
 }
 
 export class Chess {
@@ -540,12 +540,14 @@ export class Chess {
   private _comments: Record<string, string> = {}
   // private _castling: Record<Color, number> = { w: 0, b: 0 }
   private _positionCounts: Record<string, number> = {}
+  private _isStalemate: boolean = false;
 
   constructor(fen = DEFAULT_POSITION) {
     // this.load(fen=fen,{skipValidation: true});
     this.load(fen=fen);
-    console.log("FEN: ", fen);
+    // console.log("FEN: ", fen);
     this._updateKingControls();
+    console.log("position counts:", this._positionCounts);
   }
 
   private _getKingQueenPos() {
@@ -639,7 +641,7 @@ export class Chess {
     const position = tokens[0]
     let square = 0
 
-    this.clear({ preserveHeaders })
+    // this.clear({ preserveHeaders })
 
     for (let i = 0; i < position.length; i++) {
       const piece = position.charAt(i)
@@ -920,12 +922,12 @@ export class Chess {
     else {
       this._kingControllers[BLACK] = WHITE;
     }
-    console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
-    console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
-    console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
-    console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
-    console.log("King controllers: ");
-    console.log(this._kingControllers);
+    // console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
+    // console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
+    // console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
+    // console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
+    // console.log("King controllers: ");
+    // console.log(this._kingControllers);
   }
 
   // Does a piece on square1 attack a piece on square2?
@@ -1026,7 +1028,8 @@ export class Chess {
   }
 
   isStalemate() {
-    return !this.isCheckmate() && this._moves().length === 0
+    // return !this.isCheckmate() && this._moves().length === 0
+    return this._isStalemate;
   }
 
   private _getRepetitionCount() {
@@ -1470,9 +1473,9 @@ export class Chess {
     xray?: boolean
   } = {}) {
     // only generate moves when game isn't over
-    // if (this.isCheckmate()) {
-    //   return [];
-    // }
+    if (this.isCheckmate() || this.isDraw()) {
+      return [];
+    }
 
     const forSquare = square ? (square.toLowerCase() as Square) : undefined
     const forPiece = piece?.toLowerCase()
@@ -1660,6 +1663,10 @@ export class Chess {
       return result;
   }, [] as InternalMove[]);
   
+  if (uniqueMoves.length === 0) {
+    // Stalemate
+    this._isStalemate = true;
+  }
   // Now `uniqueMoves` contains objects where both attributes are not duplicate values.
   
     // return moves;
