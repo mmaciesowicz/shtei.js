@@ -1021,7 +1021,9 @@ export class Chess {
   }
 
   isQueenTakenMate() {
-    return this._queens.b === -1 || this._queens.w === -1;
+    // return this._queens.b === -1 || this._queens.w === -1;
+    // check for 2 queens in FEN
+    return (this.fen().toLowerCase().split('q').length - 1) !== 2;
   }
 
   isCheckmate() {
