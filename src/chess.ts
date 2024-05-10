@@ -135,6 +135,8 @@ const FLAGS: Record<string, string> = {
   BIG_PAWN: 'b',
   EP_CAPTURE: 'e',
   PROMOTION: 'p',
+  UNITE_WIN: 'u',
+  QTAKE_WIN: 'q',
   // KSIDE_CASTLE: 'k',
   // QSIDE_CASTLE: 'q',
 }
@@ -359,23 +361,36 @@ export function validateFen(fen: string) {
     return { ok: false, error: 'Invalid FEN: illegal en-passant square' }
   }
 
-  // 10th criterion: does chess position contain exact two kings?
-  const kings = [
-    { color: 'white', regex: /K/g },
-    { color: 'black', regex: /k/g },
-  ]
-
-  for (const { color, regex } of kings) {
-    if (!regex.test(tokens[0])) {
-      return { ok: false, error: `Invalid FEN: missing ${color} king` }
+  // 10th criterion: is there a maximum of 1 unite pieces?
+  const uniteRegex = /[Uu]/g;
+  const hasUnite = uniteRegex.test(tokens[0]);
+  if (hasUnite) {
+    const uniteCount = (tokens[0].match(uniteRegex) || []).length;
+    if (uniteCount > 1) {
+      return { ok: false, error: `Invalid FEN: ${uniteCount} unite pieces found, instead of 1` }
     }
+  }
+  else {
+    // 11th criterion: does chess position contain exact two kings?
+    const kings = [
+      { color: 'white', regex: /K/g },
+      { color: 'black', regex: /k/g },
+    ]
 
-    if ((tokens[0].match(regex) || []).length > 1) {
-      return { ok: false, error: `Invalid FEN: too many ${color} kings` }
+    for (const { color, regex } of kings) {
+      if (!regex.test(tokens[0])) {
+        console.log("Errored FEN: ", tokens[0]);
+        return { ok: false, error: `Invalid FEN: missing ${color} king` }
+      }
+
+      if ((tokens[0].match(regex) || []).length > 1) {
+        console.log("Errored FEN: ", tokens[0]);
+        return { ok: false, error: `Invalid FEN: too many ${color} kings` }
+      }
     }
   }
 
-  // 11th criterion: are any pawns on the first or tenth rows?
+  // 12th criterion: are any pawns on the first or tenth rows?
   if (
     Array.from(rows[0] + rows[9]).some((char) => char.toUpperCase() === 'P')
   ) {
@@ -529,6 +544,7 @@ export class Chess {
   constructor(fen = DEFAULT_POSITION) {
     // this.load(fen=fen,{skipValidation: true});
     this.load(fen=fen);
+    console.log("FEN: ", fen);
     this._updateKingControls();
   }
 
@@ -716,23 +732,24 @@ export class Chess {
           this._board[square]?.type === PAWN
         ) {
           // if the pawn makes an ep capture, does it leave it's king in check?
-          this._makeMove({
-            color,
-            from: square,
-            to: this._epSquare,
-            piece: PAWN,
-            captured: PAWN,
-            flags: BITS.EP_CAPTURE,
-          })
-          // const isLegal = !this._isKingAttacked(color)
-          const isLegal = (!(this._isQueenAttacked(color) && this._canKingReuniteQueen(swapColor(color))));
-          this._undoMove()
+          // this._makeMove({
+          //   color,
+          //   from: square,
+          //   to: this._epSquare,
+          //   piece: PAWN,
+          //   captured: PAWN,
+          //   flags: BITS.EP_CAPTURE,
+          // })
+          // // const isLegal = !this._isKingAttacked(color)
+          // // const isLegal = (!(this._isQueenAttacked(color) && this._canKingReuniteQueen(swapColor(color))));
+          // this._undoMove()
+          epSquare = algebraic(this._epSquare)
 
           // if ep is legal, break and set the ep square in the FEN output
-          if (isLegal) {
-            epSquare = algebraic(this._epSquare)
-            break
-          }
+          // if (isLegal) {
+          //   epSquare = algebraic(this._epSquare)
+          //   break
+          // }
           // epSquare = algebraicut(this._epSquare)
           // break
           
@@ -903,12 +920,12 @@ export class Chess {
     else {
       this._kingControllers[BLACK] = WHITE;
     }
-    // console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
-    // console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
-    // console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
-    // console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
-    // console.log("King controllers: ");
-    // console.log(this._kingControllers);
+    console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
+    console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
+    console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
+    console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
+    console.log("King controllers: ");
+    console.log(this._kingControllers);
   }
 
   // Does a piece on square1 attack a piece on square2?
@@ -980,30 +997,36 @@ export class Chess {
   //   return (this._numTimesAttacked({color: attackedBy, square: SquareCode[square], xray: false}) > 0) ? true : false;
   // }
 
-  isCheck() {
-    return (this._canKingReuniteQueen(BLACK) || 
-            this._isQueenAttacked(BLACK) || 
-            this._canKingReuniteQueen(WHITE) || 
-            this._isQueenAttacked(WHITE));
+  // isCheck() {
+  //   return (this._canKingReuniteQueen(BLACK) || 
+  //           this._isQueenAttacked(BLACK) || 
+  //           this._canKingReuniteQueen(WHITE) || 
+  //           this._isQueenAttacked(WHITE));
+  // }
+
+  // inCheck(colour:Color=this._turn): boolean {
+  //   const otherColour = swapColor(colour);
+  //   // console.log(colour + " can kingreuniteQueen: " + this._canKingReuniteQueen(colour));
+  //   // console.log(colour + " can queenBeTaken: " + this._isQueenAttacked(colour));
+  //   // console.log(otherColour + " can kingreuniteQueen: " + this._canKingReuniteQueen(otherColour));
+  //   // console.log(otherColour + " can queenBeTaken: " + this._isQueenAttacked(otherColour));
+  //   return (this._canKingReuniteQueen(colour) || <boolean>this._isQueenAttacked(colour));
+  // }
+
+  isUniteMate() {
+    return this.fen().toLowerCase().includes('u') ? true : false;
   }
 
-  inCheck(colour:Color=this._turn): boolean {
-    const otherColour = swapColor(colour);
-    // console.log(colour + " can kingreuniteQueen: " + this._canKingReuniteQueen(colour));
-    // console.log(colour + " can queenBeTaken: " + this._isQueenAttacked(colour));
-    // console.log(otherColour + " can kingreuniteQueen: " + this._canKingReuniteQueen(otherColour));
-    // console.log(otherColour + " can queenBeTaken: " + this._isQueenAttacked(otherColour));
-    return (this._canKingReuniteQueen(colour) || <boolean>this._isQueenAttacked(colour));
+  isQueenTakenMate() {
+    return this._queens.b === -1 || this._queens.w === -1;
   }
 
   isCheckmate() {
-    // return this.isCheck() && this._moves().length === 0
-    return this._queens.b === -1 || this._queens.w === -1 ||
-           this._kings.b === -1 || this._kings.w === -1;
+    return this.isUniteMate() || this.isQueenTakenMate();
   }
 
   isStalemate() {
-    return !this.isCheck() && this._moves().length === 0
+    return !this.isCheckmate() && this._moves().length === 0
   }
 
   private _getRepetitionCount() {
@@ -1147,11 +1170,19 @@ export class Chess {
       if (!this._board[to]) {
         moves.add(to);
       }
-      else if (this.pieceInControlByColour(swapColor(color),to)){
+      // opponent piece that is not KING
+      else if (this.pieceInControlByColour(swapColor(color),to) && this._board[to].type !== KING){
         // can take the attacking square
         moves.add(to);
         break;
       }
+
+      else if (this._board[to].type === KING && this._board[from].type === QUEEN && this._board[from].color === this._board[to].color  || 
+        this._board[to].type === QUEEN && this._board[from].type === KING && this._board[from].color === this._board[to].color) {
+        moves.add(to);
+        break;
+      }
+      
       // own piece blocking
       else {
         break;
@@ -1163,16 +1194,27 @@ export class Chess {
 
   private _convertSquareSetToInternalMoves(from: number, setAtoB: Set<number>, moveColor: Color, moveType: PieceSymbol, xray: boolean) {
     let moves: InternalMove[] = [];
-    for(let value of setAtoB) {
-      if (!this._board[value]) {
-        addMove(moves,moveColor,from,value,moveType);
+    for(let to of setAtoB) {
+      if (!this._board[to]) {
+        addMove(moves,moveColor,from,to,moveType);
       }
-      else if (this._board[value] && this._board[value].type !== KING) {
+      else if ((this._board[to].type === KING && this._board[from].type === QUEEN || 
+                this._board[to].type === QUEEN && this._board[from].type === KING) &&
+                this._board[from].color === moveColor && this._board[to].color === moveColor) {
+          addMove(moves,moveColor,from,to,moveType,this._board[to].type,BITS.UNITE);
+          // addMove(moves,moveColor,from,to,moveType,this._board[to].type, BITS.CAPTURE);
+          // addMove(moves,moveColor,from,to,moveType,undefined,BITS.UNITE);
+      }
+      // else if (this._board[to].type === QUEEN && this._board[from].color === swapColor(moveColor)) {
+      //   addMove(moves,moveColor,from,to,moveType,this._board[to].type,BITS.QTAKE_WIN);
+      // }
+      else if (this._board[to].type !== KING) {
         // piece here is capturable
-        addMove(moves,moveColor,from,value,moveType,this._board[value].type,BITS.CAPTURE);
+        addMove(moves,moveColor,from,to,moveType,this._board[to].type,BITS.CAPTURE);
       }
+
       else if (xray) {
-        addMove(moves,moveColor,from,value,moveType);
+        addMove(moves,moveColor,from,to,moveType);
       }
     }
     return moves;
@@ -1427,6 +1469,10 @@ export class Chess {
     moveColor?: Color | undefined
     xray?: boolean
   } = {}) {
+    // only generate moves when game isn't over
+    // if (this.isCheckmate()) {
+    //   return [];
+    // }
 
     const forSquare = square ? (square.toLowerCase() as Square) : undefined
     const forPiece = piece?.toLowerCase()
@@ -1731,18 +1777,35 @@ export class Chess {
     const them = swapColor(us)
     this._push(move) // add move to history
 
-    
-
-    this._board[move.to] = this._board[move.from]
-    delete this._board[move.from]
-
     // Check for unite win
-    if (move.flags & BITS.UNITE_WIN) {
-      alert(us + " king unites " + us + " queen. \n" + us + " wins!");
+    if ((move.captured === KING && move.piece === QUEEN) || (move.captured === QUEEN && move.piece === KING)) {
+      if (this._board[move.to] && this._board[move.to].color === this._board[move.from].color) {
+        // console.log("unite win!!");
+        this._board[move.to] = { type: UNITE, color: move.color };
+        
+        // delete this._board[move.from];
+      }
+      
     }
-    else if (move.flags & BITS.QTAKE_WIN) {
-      alert(us + " took " + them + " queen. \n" + us + " wins!");
+    else {
+      this._board[move.to] = this._board[move.from]
+      // if we moved the king
+      if (this._board[move.to].type === KING) {
+        this._kings[us] = move.to;
+        // console.log(us + " king moved to: " +  this._kings[us]);
+      }
+      // if we moved the queen
+      if (this._board[move.to].type === QUEEN) {
+        this._queens[us] = move.to;
+        // console.log(us + " queen moved to: " +  this._queens[us]);
+      }
     }
+
+    if (move.flags & BITS.QTAKE_WIN) {
+      // alert(us + " took " + them + " queen. \n" + us + " wins!");
+    }
+
+    delete this._board[move.from]
 
     // if ep capture, remove the captured pawn
     if (move.flags & BITS.EP_CAPTURE) {
@@ -1758,17 +1821,6 @@ export class Chess {
     // if pawn promotion, replace with new piece
     if (move.promotion) {
       this._board[move.to] = { type: move.promotion, color: us }
-    }
-
-    // if we moved the king
-    if (this._board[move.to].type === KING) {
-      this._kings[us] = move.to;
-      // console.log(us + " king moved to: " +  this._kings[us]);
-    }
-    // if we moved the queen
-    if (this._board[move.to].type === QUEEN) {
-      this._queens[us] = move.to;
-      // console.log(us + " queen moved to: " +  this._queens[us]);
     }
 
     // if big pawn move, update the en passant square
@@ -1818,6 +1870,10 @@ export class Chess {
     }
 
     const move = old.move
+    // console.log("undoing move!", move);
+
+    const origFromPiece = this._board[move.from];
+    const origToPiece = this._board[move.to];
 
     this._kings = old.kings
     this._queens = old.queens
@@ -1846,8 +1902,36 @@ export class Chess {
           index = move.to + 10
         }
         this._board[index] = { type: PAWN, color: them }
-      } else {
+      }
+      // if the old move was queen moves to king square
+      else if (move.captured === KING && move.piece === QUEEN) {
+        // console.log("Move:",move," is a unite move.");
+        // console.log("King pos:",this._kings[move.color]);
+        // console.log("Queen pos:",this._queens[move.color]);
+        // console.log("From square:", move.from);
+        // console.log("To square:", move.to);
+        // check if king and queen are same colour
+        if (move.from === this._queens[move.color] && move.to === this._kings[move.color]) {
+          this._board[move.to] = { type: KING, color: move.color };
+          this._board[move.from] = {type: QUEEN, color: move.color};
+        }
+      }
+      // if the old move was king moves to queen square
+      else if((move.captured === QUEEN && move.piece === KING)) {
+        // console.log("Move:",move," is a unite move.");
+        // console.log("King pos:",this._kings[move.color]);
+        // console.log("Queen pos:",this._queens[move.color]);
+        // console.log("From square:", move.from);
+        // console.log("To square:", move.to);
+        // check if king and queen are same colour
+        if (move.from === this._kings[move.color] && move.to === this._queens[move.color]) {
+          this._board[move.to] = { type: QUEEN, color: move.color };
+          this._board[move.from] = {type: KING, color: move.color};
+        }
+      }
+      else {
         // regular capture
+        // console.log("Regular capture from", move.from, "to: ", move.to);
         this._board[move.to] = { type: move.captured, color: them }
       }
     }
@@ -2516,8 +2600,10 @@ export class Chess {
     }
 
     // generate the FEN for the 'after' key
+    // console.log("makePretty move.before: ", move.before);
     this._makeMove(uglyMove)
     move.after = this.fen()
+    // console.log("makePretty move.after: ", move.after);
     this._undoMove()
 
     if (captured) {
@@ -2588,9 +2674,9 @@ export class Chess {
         break
       }
 
-      if (verbose) {
+      // if (verbose) {
         moveHistory.push(this._makePretty(move))
-      } 
+      // } 
       // else {
       //   moveHistory.push(this._moveToSan(move, this._moves()))
       // }
