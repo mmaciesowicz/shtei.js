@@ -549,6 +549,7 @@ export class Chess {
     this.load(fen=fen, {preserveHeaders:true});
     // console.log("FEN: ", fen);
     this._updateKingControls();
+    console.log(this._kingControllers);
     console.log(`Turn ${this._moveNumber}. Legal moves for ${this._turn === BLACK ? "black" : "white"}:`, this.moves({verbose: true, xray: false}));
   }
 
@@ -924,12 +925,12 @@ export class Chess {
     else {
       this._kingControllers[BLACK] = WHITE;
     }
-    // console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
-    // console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
-    // console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
-    // console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
-    // console.log("King controllers: ");
-    // console.log(this._kingControllers);
+    console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
+    console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
+    console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
+    console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
+    console.log("King controllers: ");
+    console.log(this._kingControllers);
   }
 
   // Does a piece on square1 attack a piece on square2?
@@ -956,7 +957,7 @@ export class Chess {
   // color = attacking color
   private _numTimesAttacked({color,square,xray}: {color: Color, square: number,xray: boolean}): number {
     let numTimesAttacked = 0;
-    const moves = this._moves({xray: xray, moveColor: color});
+    const moves = this._generateMoves({xray: xray, moveColor: color});
 
     // get all non-pawn moves
     for (let i=0; i<moves.length; i++){     
@@ -1476,6 +1477,24 @@ export class Chess {
     moveColor?: Color | undefined
     xray?: boolean
   } = {}) {
+    this._updateKingControls();
+    return this._generateMoves({legal,piece,square,moveColor,xray});
+  }
+
+
+  private _generateMoves({
+    legal = true, /* whether to return only legal moves */
+    piece = undefined,
+    square = undefined,
+    moveColor = this._turn,
+    xray = false, /* whether to include pieces that can see through another piece */
+  }: {
+    legal?: boolean
+    piece?: PieceSymbol
+    square?: Square
+    moveColor?: Color | undefined
+    xray?: boolean
+  } = {}) {
     // only generate moves when game isn't over
     if (this.isCheckmate() || this.isDraw()) {
       return [];
@@ -1727,7 +1746,9 @@ export class Chess {
     //   moveObj = this._moveFromSan(move, strict)
     // } else 
     if (typeof move === 'object') {
+        // this._updateKingControls();
         const moves = this._moves();
+        console.log("move() moves:",moves);
         // convert the pretty move object to an ugly move object
         for (let i = 0, len = moves.length; i < len; i++) {
           if (isDigit(move.from) && isDigit(move.to)) {
