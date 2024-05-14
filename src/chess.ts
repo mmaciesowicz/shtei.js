@@ -546,11 +546,15 @@ export class Chess {
     // this.load(fen=fen,{skipValidation: true});
 
     // preserve headers to save repetition counts
-    this.load(fen=fen, {preserveHeaders:true});
-    // console.log("FEN: ", fen);
+    // this.load(fen=fen, {preserveHeaders:true});
+    this.load(fen=fen);
+    console.log("FEN: ", fen);
+    console.log("RepetitionCount:",this._positionCounts);
+
+    
     // this._updateKingControls();
     // console.log(this._kingControllers);
-    console.log(`Turn ${this._moveNumber}. Legal moves for ${this._turn === BLACK ? "black" : "white"}:`, this.moves({verbose: true, xray: false}));
+    // console.log(`Turn ${this._moveNumber}. Legal moves for ${this._turn === BLACK ? "black" : "white"}:`, this.moves({verbose: true, xray: false}));
   }
 
   private _getKingQueenPos() {
@@ -925,12 +929,12 @@ export class Chess {
     else {
       this._kingControllers[BLACK] = WHITE;
     }
-    console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
-    console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
-    console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
-    console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
-    console.log("King controllers: ");
-    console.log(this._kingControllers);
+    // console.log(`Black attacks black king: ${blackAttacksBlackKing}`);
+    // console.log(`Black attacks white king: ${blackAttacksWhiteKing}`);
+    // console.log(`White attacks black king: ${whiteAttacksBlackKing}`);
+    // console.log(`White attacks white king: ${whiteAttacksWhiteKing}`);
+    // console.log("King controllers: ");
+    // console.log(this._kingControllers);
   }
 
   // Does a piece on square1 attack a piece on square2?
@@ -1046,6 +1050,12 @@ export class Chess {
   }
 
   isDraw() {
+    if (      this._halfMoves >= 100 || // 50 moves per side = 100 half moves
+    this.isStalemate() ||
+    this.isThreefoldRepetition()) {
+      console.log("GAME IS A DRAW");
+    }
+    
     return (
       this._halfMoves >= 100 || // 50 moves per side = 100 half moves
       this.isStalemate() ||
@@ -1686,7 +1696,7 @@ export class Chess {
       return result;
   }, [] as InternalMove[]);
   
-  if (uniqueMoves.length === 0) {
+  if (uniqueMoves.length === 0 && singleSquare === false) {
     // Stalemate
     this._isStalemate = true;
   }
